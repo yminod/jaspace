@@ -1,0 +1,5 @@
+# Preserve the imported Shift_JIS upstream source byte-for-byte.
+jaspace.el -text
+
+# Historical gzip archives are binary artifacts.
+ref/*.el.gz -text
