@@ -1,0 +1,9 @@
+# Saved web pages and Wayback Machine replay assets are local references.
+/ref/*.htm
+/ref/*.html
+/ref/*_files/
+
+# Generated Emacs Lisp files.
+*.elc
+*-autoloads.el
+
