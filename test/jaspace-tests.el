@@ -360,10 +360,9 @@
       (should (eq (get-text-property 1 'face) 'bold))
       (should-not (get-text-property 8 'face)))))
 
-(ert-deftest jaspace-width-advice-lifetime-and-no-idle-timer ()
+(ert-deftest jaspace-width-advice-lifetime ()
   (jaspace-test-with-buffer
     (jaspace-mode-on)
-    (should-not jaspace-idle-timer)
     (should (subrp (symbol-function 'vertical-motion)))
     (should (advice-member-p #'jaspace--width-advice 'char-width))
     (jaspace-mode-off)

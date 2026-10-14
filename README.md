@@ -83,7 +83,7 @@ nilまたは空文字にすると、文字の置換を行わずfaceで強調す�
 
 ## 互換性と変更点
 
-- コマンド名、カスタマイズ変数、face名を維持した。Lispからの引数なしの
+- 表示に関するコマンド名、カスタマイズ変数、face名を維持した。Lispからの引数なしの
   `jaspace-mode` は従来どおりトグルする。`jaspace-mode-hook` は有効化時だけ、
   `jaspace-mode-off-hook` は無効化時だけ、状態が変わったときに実行する。
 - display tableをバッファごとに複製し、他バッファや共有tableを変更しない。
@@ -93,7 +93,9 @@ nilまたは空文字にすると、文字の置換を行わずfaceで強調す�
 - idle timerを廃止し、major mode、font-lock、read-onlyのフックと
   `post-command-hook` で更新する。`setq` による状態変更はそのバッファでの
   次のコマンド後に反映する。即時反映には `jaspace-update` を呼ぶ。
-  `jaspace-idle-delay` は互換性のため残しているが、現在は効果を持たない。
+  不要になった `jaspace-idle-delay`、`jaspace-idle-timer`、
+  `jaspace-set-idle-timer` と、同一セッションでの旧版からの再読み込みに備える
+  互換処理も削除した。
 - Emacs 31.1でも代替表示が文字幅のAPIに影響するため、`char-width` と
   `string-width` の補正は `advice-add` で残した。有効なバッファがなくなれば
   adviceを取り外す。`vertical-motion` の旧補正は空行の移動を検証して除去した。

@@ -110,11 +110,6 @@ tab stop.  Changes take effect when the mode is enabled again."
   :type 'boolean
   :group 'jaspace)
 
-(defcustom jaspace-idle-delay 1
-  "Retained for compatibility; JaSpace no longer uses an idle timer."
-  :type 'number
-  :group 'jaspace)
-
 (defcustom jaspace-mode-hook nil
   "Hook run once when JaSpace is activated."
   :type 'hook
@@ -147,8 +142,6 @@ changes.  Changes to this list are checked after the next command."
   "Font Lock keywords installed in this buffer by JaSpace.")
 (defvar-local jaspace-tab-width nil
   "Tab width used for character markers, or nil.")
-(defvar jaspace-idle-timer nil
-  "Legacy timer, retained only so it can be canceled on upgrade.")
 (defvar jaspace-inhibit-update nil
   "Non-nil inhibits recursive activation updates.")
 
@@ -398,11 +391,6 @@ also checked after the next command in the current buffer."
           (jaspace--clear-tab-overlays (point-min) (point-max)))
         (jaspace-fontify-buffer)))))
 
-(defun jaspace-set-idle-timer ()
-  "Cancel a legacy JaSpace timer; retained for configuration compatibility."
-  (when (timerp jaspace-idle-timer) (cancel-timer jaspace-idle-timer))
-  (setq jaspace-idle-timer nil))
-
 (defun jaspace--font-lock-changed ()
   "Update activation and discard tab markers when Font Lock stops."
   (unless font-lock-mode
@@ -432,7 +420,6 @@ also checked after the next command in the current buffer."
             '(menu-item "Japanese Whitespaces" jaspace-mode
                         :button (:toggle . jaspace-mode)))
 
-(jaspace-set-idle-timer)
 (add-hook 'after-change-major-mode-hook #'jaspace-update)
 (add-hook 'font-lock-mode-hook #'jaspace--font-lock-changed)
 (add-hook 'read-only-mode-hook #'jaspace-update)
@@ -440,7 +427,7 @@ also checked after the next command in the current buffer."
 (add-hook 'post-command-hook #'jaspace-update)
 
 (defun jaspace-unload-function ()
-  "Clean up JaSpace buffers, hooks, advice, and the legacy timer."
+  "Clean up JaSpace buffers, hooks, and advice."
   (let ((jaspace-inhibit-update t))
     (dolist (buffer (buffer-list))
       (with-current-buffer buffer (jaspace-mode-quit))))
@@ -449,7 +436,6 @@ also checked after the next command in the current buffer."
     (remove-hook hook #'jaspace-update))
   (remove-hook 'font-lock-mode-hook #'jaspace--font-lock-changed)
   (jaspace--update-width-advice)
-  (jaspace-set-idle-timer)
   nil)
 
 (provide 'jaspace)
