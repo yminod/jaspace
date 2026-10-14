@@ -41,5 +41,67 @@ Emacsのminor modeである。このリポジトリでは、原版の使い勝�
 
 ## 現在の状態
 
-無改変の upstream 1.1 は `upstream/1.1` タグで保存済みである。次の作業は、
-現行実装の挙動を確認するテストの作成と、対応するEmacsバージョンの決定である。
+無改変の upstream 1.1 は `upstream/1.1` タグで保存済みである。
+保守版1.2.0は GNU Emacs 27.1以降を対象とし、UTF-8、lexical binding、
+パッケージメタデータ、現行APIによる表示と後始末に移行した。
+XEmacsやEmacs 20/21向けの分岐・廃止APIの代替処理は削除し、保守対象にしない。
+
+進め方の1〜5は実装とEmacs 31.1 (Windows)での検証まで完了した。
+35件のERTをソース・バイトコンパイル済みコードの両方で確認し、警告を
+エラー扱いにしたコンパイルと、パッケージのアンロードも通っている。
+6については対応範囲を27.1以降とし、当面は最新版31.1の検証を基準に進める。
+既知のAPI変更がない範囲では互換性を見込むが、全対応バージョンでの厳密な
+テストは後回しにする。31.1以外を検証済みとはしていない。
+
+## 導入と設定
+
+このディレクトリを `load-path` に追加して読み込む。Emacsの
+`M-x package-install-file` で `jaspace.el` を指定して導入することもできる。
+
+```elisp
+(add-to-list 'load-path "C:/Users/cap06/src/jaspace")
+(require 'jaspace)
+```
+
+既定では `jaspace-modes` に含まれるmajor modeで、font-lockが有効な間に
+自動的に有効になる。手動の切替には `M-x jaspace-mode`、強制的な有効化・
+無効化には `M-x jaspace-mode-on` / `M-x jaspace-mode-off` を使う。
+
+```elisp
+;; 設定は読み込み前、またはモードを再度有効化する前に指定する。
+(setq jaspace-alternate-jaspace-string "□"
+      jaspace-alternate-eol-string "«\n"
+      jaspace-highlight-tabs ?^)
+```
+
+自動有効化を止めるには `jaspace-modes` をnilにする。全角空白の代替文字列を
+nilまたは空文字にすると、文字の置換を行わずfaceで強調する。改行の
+代替文字列は必ず改行文字で終える。
+
+## 互換性と変更点
+
+- コマンド名、カスタマイズ変数、face名を維持した。Lispからの引数なしの
+  `jaspace-mode` は従来どおりトグルする。`jaspace-mode-hook` は有効化時だけ、
+  `jaspace-mode-off-hook` は無効化時だけ、状態が変わったときに実行する。
+- display tableをバッファごとに複製し、他バッファや共有tableを変更しない。
+  後から他の機能が変更したマッピングは無効化時にも維持する。
+- タブの代替表示には専用overlayを使う。無効化・major mode変更・バッファの
+  終了時に削除し、他の機能のdisplayプロパティは消さない。
+- idle timerを廃止し、major mode、font-lock、read-onlyのフックと
+  `post-command-hook` で更新する。`setq` による状態変更はそのバッファでの
+  次のコマンド後に反映する。即時反映には `jaspace-update` を呼ぶ。
+  `jaspace-idle-delay` は互換性のため残しているが、現在は効果を持たない。
+- Emacs 31.1でも代替表示が文字幅のAPIに影響するため、`char-width` と
+  `string-width` の補正は `advice-add` で残した。有効なバッファがなくなれば
+  adviceを取り外す。`vertical-motion` の旧補正は空行の移動を検証して除去した。
+- `whitespace-mode` との有効化・無効化の順序を検証した。同じ文字のdisplay
+  tableマッピングには、後から有効にしたモードの設定が適用される。
+- mmm-mode用の公開フックは残している。mmm-mode本体との実動作検証は未実施。
+
+## 検証
+
+```powershell
+./scripts/test.ps1 -Emacs 'C:\Users\cap06\emacs\bin\emacs.exe'
+```
+
+原版の確認結果と個別の実行方法は [test/README.md](test/README.md) を参照。

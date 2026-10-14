@@ -3,6 +3,16 @@
 PowerShellから、初期化ファイルを読み込まずに実行する。
 
 ```powershell
+./scripts/test.ps1 -Emacs 'C:\Users\cap06\emacs\bin\emacs.exe'
+```
+
+このスクリプトはソースのERT、警告をエラー扱いにしたコンパイル、
+コンパイル済みコードのERT、パッケージメタデータとアンロードの検証を行う。
+EmacsがPATHにある場合は `-Emacs` を省略できる。
+
+ソースのERTだけを実行するには次を使う。
+
+```powershell
 & C:\Users\cap06\emacs\bin\emacs.exe --batch -Q -L . -l jaspace.el -l test/jaspace-tests.el -f ert-run-tests-batch-and-exit
 ```
 
@@ -19,4 +29,25 @@ PowerShellから、初期化ファイルを読み込まずに実行する。
   major mode変更、read-only、font-lock追従、変更状態とundoの保持を記録した。
 
 この置き換えは原版の観察用であり、製品コードの互換処理には採用しない。
-現代化後の検証では置き換えを外して同じ挙動を確認する。
+現代化後のテストにはこの置き換えを含めていない。原版のテストは
+`da1ba12` コミットから確認できる。
+
+## 保守版の確認結果
+
+2026-10-14、GNU Emacs 31.1 (Windows) で35件のERTがソース・バイトコードの
+両方で成功した。バイトコンパイルの警告はなく、パッケージのメタデータと
+アンロードの検証も成功した。
+
+追加したテストは共有・標準display table、他機能のマッピングの保持、
+複数バッファ、バッファ終了、narrowing、read-only、タブの編集と幅の変更、
+実際のfont-lock切替、他のfont-lock設定の保持、文字幅、空行の移動、
+`whitespace-mode`との併用を対象とする。
+
+font-lockとwhitespaceはbatch時の有効化を抑制するため、実動作の切替テストでは
+`noninteractive` を一時的にnilにし、非表示扱いにならないバッファ名を使う。
+GUI描画の見た目の確認とは区別する。
+
+対応範囲はEmacs 27.1以降とし、当面は最新版31.1の検証を基準にする。
+ローカルで確認済みなのは31.1のみで、全対応バージョンでの厳密なテストは
+後回しにする。既知のAPI変更がない範囲では互換性を見込む。
+mmm-modeとの実動作、およびGUIでの見た目の確認も今後の検証項目である。
