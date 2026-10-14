@@ -1,5 +1,6 @@
-# Preserve the imported Shift_JIS upstream source byte-for-byte.
-jaspace.el -text
+# Maintained sources use UTF-8 and LF.  The upstream tag retains its raw bytes.
+*.el text eol=lf
+*.md text eol=lf
 
 # Historical gzip archives are binary artifacts.
 ref/*.el.gz -text
