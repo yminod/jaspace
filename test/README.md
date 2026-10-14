@@ -1,19 +1,26 @@
 # 検証
 
-PowerShellから、初期化ファイルを読み込まずに実行する。
+EmacsがPATHにある場合は、リポジトリのルートでPowerShellから次を実行する。
+Emacsの初期化ファイルは読み込まない。
 
 ```powershell
-./scripts/test.ps1 -Emacs 'C:\Users\cap06\emacs\bin\emacs.exe'
+./scripts/test.ps1
 ```
 
 このスクリプトはソースのERT、警告をエラー扱いにしたコンパイル、
 コンパイル済みコードのERT、パッケージメタデータとアンロードの検証を行う。
-EmacsがPATHにある場合は `-Emacs` を省略できる。
+
+PATHにない場合は `-Emacs` に実行ファイルのパスを指定する。
+次のパスは実際の配置先に置き換える。
+
+```powershell
+./scripts/test.ps1 -Emacs 'C:\path\to\emacs\bin\emacs.exe'
+```
 
 ソースのERTだけを実行するには次を使う。
 
 ```powershell
-& C:\Users\cap06\emacs\bin\emacs.exe --batch -Q -L . -l jaspace.el -l test/jaspace-tests.el -f ert-run-tests-batch-and-exit
+emacs --batch -Q -L . -l jaspace.el -l test/jaspace-tests.el -f ert-run-tests-batch-and-exit
 ```
 
 `-l jaspace.el` はソースを明示的に読み込み、古い `.elc` の混入を防ぐ。
