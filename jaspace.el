@@ -1,6 +1,12 @@
-;;; -*- coding: utf-8-unix; tab-width: 4; -*-
-;;; jaspace.el --- make Japanese whitespaces visible
+;;; jaspace.el --- Make Japanese whitespaces visible -*- lexical-binding: nil; coding: utf-8-unix; -*-
 ;;; $Id: jaspace.el 1.1 2005/02/26 06:21:02 satomii Exp $
+
+;; Author: Satomi I.
+;; Version: 1.2.0
+;; Package-Requires: ((emacs "27.1"))
+;; Keywords: convenience, faces
+;; URL: https://github.com/yminod/jaspace
+;; SPDX-License-Identifier: GPL-2.0-or-later
 
 ;; Copyright (C) 2002-2004, Satomi I.
 ;; (satomi atmark ring period gr period jp)
