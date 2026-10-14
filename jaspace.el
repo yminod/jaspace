@@ -140,11 +140,6 @@ tab stop.  Changes take effect when the mode is enabled again."
 (defvar-local jaspace--display-entries nil)
 (defvar-local jaspace--tab-marker nil)
 
-;; Optional mmm-mode integration; loading JaSpace does not load mmm-mode.
-(defvar mmm-mode)
-(declare-function mmm-regions-alist "mmm-region" (beg end))
-(declare-function mmm-update-mode-info "mmm-mode" (mode &optional force))
-(declare-function mmm-refontify-maybe "mmm-mode" ())
 ;; whitespace-mode keeps a copy of the table it will later restore.
 (defvar whitespace-display-table)
 
@@ -395,23 +390,6 @@ directly with `setq' are checked after the next command in that buffer."
       (widen)
       (jaspace--clear-tab-overlays (point-min) (point-max))))
   (jaspace-update))
-
-(defun jaspace-synch-mmm-maybe ()
-  "Synchronize JaSpace keywords with mmm-mode when it is active."
-  (when (bound-and-true-p mmm-mode)
-    (let ((font-lock-keywords-alist font-lock-keywords-alist))
-      (dolist (region (mmm-regions-alist (point-min) (point-max)))
-        (let ((mode (or (car region) major-mode)))
-          (when jaspace-mode
-            (font-lock-add-keywords mode jaspace-font-lock-keywords 'append))
-          (mmm-update-mode-info mode t))))
-    (mmm-refontify-maybe)))
-
-(defun jaspace-mmm-mode-hook ()
-  "Install JaSpace synchronization hooks for an mmm-mode buffer."
-  (jaspace-synch-mmm-maybe)
-  (add-hook 'jaspace-mode-hook #'jaspace-synch-mmm-maybe nil t)
-  (add-hook 'jaspace-mode-off-hook #'jaspace-synch-mmm-maybe nil t))
 
 (define-key mode-line-mode-menu [jaspace-mode]
             '(menu-item "Japanese Whitespaces" jaspace-mode

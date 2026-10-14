@@ -113,7 +113,10 @@ XEmacsやEmacs 20/21向けの分岐・廃止APIの代替処理は削除し、保
   adviceを取り外す。`vertical-motion` の旧補正は空行の移動を検証して除去した。
 - `whitespace-mode` との有効化・無効化の順序を検証した。同じ文字のdisplay
   tableマッピングには、後から有効にしたモードの設定が適用される。
-- mmm-mode用の公開フックは残している。mmm-mode本体との実動作検証は未実施。
+- mmm-mode専用の `jaspace-mmm-mode-hook` と `jaspace-synch-mmm-maybe` を削除した。
+  専用処理にはタブ表示のエラーや後始末の不具合があり、保守版ではmmm-mode
+  との完全な併用をサポート対象にしない。調査結果は
+  [docs/mmm-mode.md](docs/mmm-mode.md) を参照。
 
 ## 検証
 
