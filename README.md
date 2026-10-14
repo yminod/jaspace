@@ -69,10 +69,13 @@ XEmacsやEmacs 20/21向けの分岐・廃止APIの代替処理は削除し、保
 
 ```elisp
 ;; 設定は読み込み前、またはモードを再度有効化する前に指定する。
-(setq jaspace-alternate-jaspace-string "□"
-      jaspace-alternate-eol-string "«\n"
+(setq jaspace-alternate-jaspace-string "\N{WHITE SQUARE}"
+      jaspace-alternate-eol-string "\N{LEFT-POINTING DOUBLE ANGLE QUOTATION MARK}\n"
       jaspace-highlight-tabs ?^)
 ```
+
+例ではUnicodeの文字名を使う `\N{...}` 表記で文字を明示している。
+文字を直接入力しても同じ値になり、代替表示には任意の文字列を指定できる。
 
 自動有効化を止めるには `jaspace-modes` をnilにする。全角空白の代替文字列を
 nilまたは空文字にすると、文字の置換を行わずfaceで強調する。改行の

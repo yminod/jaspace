@@ -49,7 +49,7 @@
   "Make Japanese whitespaces visible."
   :group 'convenience)
 
-(defcustom jaspace-alternate-jaspace-string "□"
+(defcustom jaspace-alternate-jaspace-string "\N{WHITE SQUARE}"
   "Alternate string for U+3000 IDEOGRAPHIC SPACE.
 Nil or an empty string enables highlighting without a display mapping.
 Changes take effect when the mode is enabled again."
@@ -247,7 +247,7 @@ changes.  Changes to this list are checked after the next command."
 (defun jaspace-font-lock-keywords ()
   "Return JaSpace's Font Lock keywords for the current configuration."
   (append
-   '(("　" (0 'jaspace-highlight-jaspace-face prepend)))
+   '(("\N{IDEOGRAPHIC SPACE}" (0 'jaspace-highlight-jaspace-face prepend)))
    (when (jaspace--nonempty-string jaspace-alternate-eol-string)
      '(("\n" (0 'jaspace-highlight-eol-face prepend))))
    (when jaspace-highlight-tabs

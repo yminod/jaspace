@@ -15,7 +15,7 @@
       (jaspace-follow-font-lock nil)
       (jaspace-highlight-tabs ?^))
   (with-temp-buffer
-    (insert "a　\tb\n")
+    (insert "a\N{IDEOGRAPHIC SPACE}\tb\n")
     (jaspace-mode-on)
     (font-lock-ensure)
     (unless (get-char-property 3 'jaspace-alt)

@@ -40,7 +40,7 @@
 (ert-deftest jaspace-face-only-mode ()
   (jaspace-test-with-buffer
     (setq jaspace-alternate-jaspace-string nil)
-    (insert "a　b")
+    (insert "a\N{IDEOGRAPHIC SPACE}b")
     (jaspace-mode-on)
     (font-lock-ensure)
     (should-not buffer-display-table)
@@ -81,7 +81,7 @@
 
 (ert-deftest jaspace-preserves-content-modification-and-undo ()
   (jaspace-test-with-buffer
-    (insert "　\t\n")
+    (insert "\N{IDEOGRAPHIC SPACE}\t\n")
     (buffer-enable-undo)
     (set-buffer-modified-p nil)
     (let ((text (buffer-string)) (undo buffer-undo-list))
@@ -350,7 +350,7 @@
     (emacs-lisp-mode)
     (let ((defaults font-lock-defaults)
           (foreign '(("FOREIGN" (0 'bold)))))
-      (insert "FOREIGN　")
+      (insert "FOREIGN\N{IDEOGRAPHIC SPACE}")
       (font-lock-add-keywords nil foreign 'append)
       (jaspace-mode-on)
       (font-lock-ensure)
@@ -375,10 +375,10 @@
     (setq jaspace-alternate-jaspace-string "LONG"
           jaspace-alternate-eol-string "«\n")
     (let ((width (char-width #x3000))
-          (string (string-width "a　b")))
+          (string (string-width "a\N{IDEOGRAPHIC SPACE}b")))
       (jaspace-mode-on)
       (should (= width (char-width #x3000)))
-      (should (= string (string-width "a　b"))))))
+      (should (= string (string-width "a\N{IDEOGRAPHIC SPACE}b"))))))
 
 (ert-deftest jaspace-eol-vertical-motion-preserves-empty-lines ()
   (jaspace-test-with-buffer
@@ -411,7 +411,7 @@
           (emacs-lisp-mode)
           (font-lock-mode 1)
           (setq jaspace-alternate-eol-string "«\n")
-          (insert "a　\t\n")
+          (insert "a\N{IDEOGRAPHIC SPACE}\t\n")
           (unwind-protect
               (progn
                 (if jaspace-first
