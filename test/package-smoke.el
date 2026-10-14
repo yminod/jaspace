@@ -36,7 +36,7 @@
   (insert-file-contents "jaspace.el")
   (let ((package (package-buffer-info)))
     (unless (and (eq (package-desc-name package) 'jaspace)
-                 (equal (package-desc-version package) '(1 2 0))
+                 (equal (package-desc-version package) '(1 2 1))
                  (equal (package-desc-reqs package) '((emacs (27 1)))))
       (error "Unexpected package metadata: %S" package))))
 

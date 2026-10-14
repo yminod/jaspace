@@ -219,6 +219,104 @@
             (should (= (jaspace-active-count) (1+ before))))
         (when (buffer-live-p other) (kill-buffer other))))))
 
+(ert-deftest jaspace-cloned-buffers-disable-independently ()
+  (dolist (clone-function '(clone-buffer clone-indirect-buffer))
+    (dolist (clone-off-first '(nil t))
+      (jaspace-test-with-buffer
+        (setq jaspace-alternate-eol-string
+              "\N{LEFT-POINTING DOUBLE ANGLE QUOTATION MARK}\n")
+        (jaspace-mode-on)
+        (let* ((base (current-buffer))
+               (clone (funcall clone-function " *jaspace-clone*" nil))
+               (disabled (if clone-off-first clone base))
+               (active (if clone-off-first base clone)))
+          (unwind-protect
+              (progn
+                (with-current-buffer disabled
+                  (jaspace-mode-off)
+                  (should-not (and buffer-display-table
+                                   (aref buffer-display-table #x3000)))
+                  (should-not (and buffer-display-table
+                                   (aref buffer-display-table ?\n))))
+                (with-current-buffer active
+                  (should jaspace-mode)
+                  (should (equal (aref buffer-display-table #x3000) [#x25a1]))
+                  (should (equal (aref buffer-display-table ?\n) [#xab ?\n]))))
+            (kill-buffer clone)))))))
+
+(ert-deftest jaspace-indirect-buffer-kill-preserves-base-mappings ()
+  (jaspace-test-with-buffer
+    (jaspace-mode-on)
+    (let ((clone (clone-indirect-buffer " *jaspace-clone*" nil)))
+      (unwind-protect
+          (progn
+            (kill-buffer clone)
+            (should jaspace-mode)
+            (should (equal (aref buffer-display-table #x3000) [#x25a1])))
+        (when (buffer-live-p clone) (kill-buffer clone))))))
+
+(ert-deftest jaspace-indirect-major-mode-change-preserves-base-mappings ()
+  (jaspace-test-with-buffer
+    (jaspace-mode-on)
+    (let ((clone (clone-indirect-buffer " *jaspace-clone*" nil)))
+      (unwind-protect
+          (progn
+            (with-current-buffer clone
+              (text-mode)
+              (should-not jaspace-mode))
+            (should jaspace-mode)
+            (should (equal (aref buffer-display-table #x3000) [#x25a1])))
+        (kill-buffer clone)))))
+
+(ert-deftest jaspace-cleanup-preserves-retained-table-and-foreign-edits ()
+  (jaspace-test-with-buffer
+    (jaspace-mode-on)
+    (let ((retained buffer-display-table))
+      (aset buffer-display-table ?x [?y])
+      (jaspace-mode-off)
+      (should (equal (aref buffer-display-table ?x) [?y]))
+      (should-not (aref buffer-display-table #x3000))
+      ;; A client retaining the active table still sees its original mappings.
+      (should (equal (aref retained #x3000) [#x25a1]))
+      (should (equal (aref retained ?x) [?y])))))
+
+(ert-deftest jaspace-indirect-whitespace-cleanup-preserves-base-mappings ()
+  (dolist (jaspace-first '(nil t))
+    (dolist (jaspace-off-first '(nil t))
+      (jaspace-test-with-buffer
+        (let ((noninteractive nil)
+              (whitespace-style '(space-mark tab-mark))
+              (whitespace-display-mappings '((tab-mark ?\t [?> ?\t])))
+              clone)
+          (rename-buffer (generate-new-buffer-name "jaspace-whitespace-base"))
+          (emacs-lisp-mode)
+          (font-lock-mode 1)
+          (unwind-protect
+              (progn
+                (if jaspace-first
+                    (progn (jaspace-mode-on) (whitespace-mode 1))
+                  (whitespace-mode 1)
+                  (jaspace-mode-on))
+                (setq clone (clone-indirect-buffer "jaspace-whitespace-clone" nil))
+                (with-current-buffer clone
+                  (if jaspace-off-first
+                      (progn (jaspace-mode-off) (whitespace-mode -1))
+                    (whitespace-mode -1)
+                    (jaspace-mode-off))
+                  (should-not (and buffer-display-table
+                                   (aref buffer-display-table #x3000))))
+                (should jaspace-mode)
+                (should whitespace-mode)
+                (should (equal (aref buffer-display-table #x3000) [#x25a1]))
+                (should (equal (aref buffer-display-table ?\t) [?> ?\t]))
+                ;; Whitespace restores its own pre-activation snapshot.
+                (whitespace-mode -1)
+                (if jaspace-first
+                    (should (equal (aref buffer-display-table #x3000) [#x25a1]))
+                  (should-not buffer-display-table)))
+            (when (buffer-live-p clone) (kill-buffer clone))
+            (when whitespace-mode (whitespace-mode -1))))))))
+
 (ert-deftest jaspace-narrowed-buffer-cleans-all-tab-markers ()
   (jaspace-test-with-buffer
     (setq jaspace-highlight-tabs ?^)

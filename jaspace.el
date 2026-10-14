@@ -1,7 +1,7 @@
 ;;; jaspace.el --- Make Japanese whitespaces visible -*- lexical-binding: t; -*-
 
 ;; Author: Satomi I.
-;; Version: 1.2.0
+;; Version: 1.2.1
 ;; Package-Requires: ((emacs "27.1"))
 ;; Keywords: convenience, faces
 ;; URL: https://github.com/yminod/jaspace
@@ -169,28 +169,39 @@ tab stop.  Changes take effect when the mode is enabled again."
             (aset jaspace--display-table char installed)))))))
 
 (defun jaspace--clean-display-table (table)
-  "Remove mappings owned by JaSpace from TABLE, preserving other edits."
-  (when (char-table-p table)
-    (dolist (entry jaspace--display-entries)
-      (when (eq (aref table (car entry)) (nth 2 entry))
-        (aset table (car entry) (nth 1 entry))))))
+  "Return TABLE with JaSpace's owned mappings removed, preserving other edits.
+Never modify TABLE: a clone or another client may retain it.
+Return TABLE itself when none of its mappings need changing."
+  (let ((clean table))
+    (when (char-table-p table)
+      (dolist (entry jaspace--display-entries)
+        (when (eq (aref clean (car entry)) (nth 2 entry))
+          (when (eq clean table)
+            (setq clean (copy-sequence table)))
+          (aset clean (car entry) (nth 1 entry)))))
+    clean))
 
 (defun jaspace--restore-display-table ()
   "Restore owned entries, including copies retained by `whitespace-mode'."
   (when jaspace--display-table
-    (jaspace--clean-display-table jaspace--display-table)
-    (jaspace--clean-display-table buffer-display-table)
+    (let ((owned (eq buffer-display-table jaspace--display-table))
+          (clean (jaspace--clean-display-table buffer-display-table)))
+      ;; Setting an entry and resetting it can leave expanded sub-tables.
+      ;; Compare a canonical copy without modifying a retained table.
+      (if (and owned
+               (equal (let ((canonical (copy-sequence clean)))
+                        (optimize-char-table canonical)
+                        canonical)
+                      jaspace--display-base))
+          (if jaspace--display-was-local
+              (setq buffer-display-table jaspace-original-display-table)
+            (kill-local-variable 'buffer-display-table))
+        (unless (eq clean buffer-display-table)
+          (setq buffer-display-table clean))))
     (when (boundp 'whitespace-display-table)
-      (jaspace--clean-display-table whitespace-display-table))
-    ;; Setting an entry and resetting it can leave expanded sub-tables.
-    ;; Compare canonical copies so representation changes are not mistaken
-    ;; for mappings installed by another package.
-    (optimize-char-table jaspace--display-table)
-    (when (and (eq buffer-display-table jaspace--display-table)
-               (equal buffer-display-table jaspace--display-base))
-      (if jaspace--display-was-local
-          (setq buffer-display-table jaspace-original-display-table)
-        (kill-local-variable 'buffer-display-table)))
+      (let ((clean (jaspace--clean-display-table whitespace-display-table)))
+        (unless (eq clean whitespace-display-table)
+          (setq-local whitespace-display-table clean))))
     (setq jaspace--display-table nil
           jaspace--display-base nil
           jaspace--display-entries nil
