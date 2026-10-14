@@ -47,7 +47,7 @@ Emacsのminor modeである。このリポジトリでは、原版の使い勝�
 XEmacsやEmacs 20/21向けの分岐・廃止APIの代替処理は削除し、保守対象にしない。
 
 進め方の1〜5は実装とEmacs 31.1 (Windows)での検証まで完了した。
-35件のERTをソース・バイトコンパイル済みコードの両方で確認し、警告を
+38件のERTをソース・バイトコンパイル済みコードの両方で確認し、警告を
 エラー扱いにしたコンパイルと、パッケージのアンロードも通っている。
 6については対応範囲を27.1以降とし、当面は最新版31.1の検証を基準に進める。
 既知のAPI変更がない範囲では互換性を見込むが、全対応バージョンでの厳密な
@@ -63,9 +63,16 @@ XEmacsやEmacs 20/21向けの分岐・廃止APIの代替処理は削除し、保
 (require 'jaspace)
 ```
 
-既定では `jaspace-modes` に含まれるmajor modeで、font-lockが有効な間に
-自動的に有効になる。手動の切替には `M-x jaspace-mode`、強制的な有効化・
-無効化には `M-x jaspace-mode-on` / `M-x jaspace-mode-off` を使う。
+有効化するバッファはユーザーが選ぶ。手動の切替には `M-x jaspace-mode`、
+強制的な有効化・無効化には `M-x jaspace-mode-on` / `M-x jaspace-mode-off`
+を使う。プログラミング用のバッファで有効にしたい場合は、初期化ファイルで
+フックを設定する。
+
+```elisp
+(add-hook 'prog-mode-hook (lambda () (jaspace-mode 1)))
+```
+
+`require` だけでは、既存・新規のバッファで自動的に有効にならない。
 
 ```elisp
 ;; 設定は読み込み前、またはモードを再度有効化する前に指定する。
@@ -77,25 +84,30 @@ XEmacsやEmacs 20/21向けの分岐・廃止APIの代替処理は削除し、保
 例ではUnicodeの文字名を使う `\N{...}` 表記で文字を明示している。
 文字を直接入力しても同じ値になり、代替表示には任意の文字列を指定できる。
 
-自動有効化を止めるには `jaspace-modes` をnilにする。全角空白の代替文字列を
-nilまたは空文字にすると、文字の置換を行わずfaceで強調する。改行の
-代替文字列は必ず改行文字で終える。
+全角空白の代替文字列をnilまたは空文字にすると、文字の置換を行わずfaceで
+強調する。改行の代替文字列は必ず改行文字で終える。
 
 ## 互換性と変更点
 
-- 表示に関するコマンド名、カスタマイズ変数、face名を維持した。Lispからの引数なしの
-  `jaspace-mode` は従来どおりトグルする。`jaspace-mode-hook` は有効化時だけ、
+- 表示に関するコマンド名、カスタマイズ変数、face名を維持した。
+  Lispからの引数なしの `jaspace-mode` は従来どおりトグルする。
+  `jaspace-mode-hook` は有効化時だけ、
   `jaspace-mode-off-hook` は無効化時だけ、状態が変わったときに実行する。
+- `jaspace-modes` と対象major modeによる自動有効化を削除した。
+  有効化する場所はユーザーのフックやコマンドで指定する。
 - display tableをバッファごとに複製し、他バッファや共有tableを変更しない。
   後から他の機能が変更したマッピングは無効化時にも維持する。
 - タブの代替表示には専用overlayを使う。無効化・major mode変更・バッファの
   終了時に削除し、他の機能のdisplayプロパティは消さない。
-- idle timerを廃止し、major mode、font-lock、read-onlyのフックと
+- idle timerを廃止し、有効化したバッファ内のfont-lock、read-onlyのフックと
   `post-command-hook` で更新する。`setq` による状態変更はそのバッファでの
   次のコマンド後に反映する。即時反映には `jaspace-update` を呼ぶ。
   不要になった `jaspace-idle-delay`、`jaspace-idle-timer`、
   `jaspace-set-idle-timer` と、同一セッションでの旧版からの再読み込みに備える
   互換処理も削除した。
+- `jaspace-follow-font-lock` と `jaspace-disable-on-read-only-buffers` による
+  一時停止・復帰はユーザーが有効化したバッファだけに適用する。
+  明示的に無効化した場合やmajor modeを変更した場合は、更新用フックも外す。
 - Emacs 31.1でも代替表示が文字幅のAPIに影響するため、`char-width` と
   `string-width` の補正は `advice-add` で残した。有効なバッファがなくなれば
   adviceを取り外す。`vertical-motion` の旧補正は空行の移動を検証して除去した。

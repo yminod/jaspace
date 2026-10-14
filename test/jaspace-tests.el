@@ -7,8 +7,7 @@
 
 (defmacro jaspace-test-with-buffer (&rest body)
   (declare (indent 0) (debug t))
-  `(let ((jaspace-modes nil)
-         (jaspace-follow-font-lock nil)
+  `(let ((jaspace-follow-font-lock nil)
          (jaspace-alternate-jaspace-string "□")
          (jaspace-alternate-eol-string nil)
          (jaspace-highlight-tabs nil)
@@ -18,7 +17,7 @@
      (with-temp-buffer
        (unwind-protect
            (progn ,@body)
-         (when jaspace-mode (jaspace-mode-off))))))
+         (jaspace-mode-off)))))
 
 (ert-deftest jaspace-space-display-and-restoration ()
   (jaspace-test-with-buffer
@@ -98,16 +97,20 @@
     (should-not jaspace-mode)
     (should-not buffer-display-table)))
 
-(ert-deftest jaspace-update-auto-enables-selected-mode ()
+(ert-deftest jaspace-update-does-not-enable-inactive-buffer ()
   (jaspace-test-with-buffer
-    (setq jaspace-modes '(fundamental-mode))
+    (let ((noninteractive nil))
+      (rename-buffer (generate-new-buffer-name "jaspace-inactive-test"))
+      (emacs-lisp-mode)
+      (font-lock-mode 1))
+    (run-hooks 'post-command-hook)
     (jaspace-update)
-    (should jaspace-mode)))
+    (should-not jaspace-mode)
+    (should-not buffer-display-table)))
 
 (ert-deftest jaspace-manual-off-survives-update ()
   (jaspace-test-with-buffer
-    (setq jaspace-modes '(fundamental-mode))
-    (jaspace-update)
+    (jaspace-mode-on)
     (jaspace-mode-off)
     (jaspace-update)
     (should-not jaspace-mode)))
@@ -293,13 +296,58 @@
     (read-only-mode -1)
     (should jaspace-mode)))
 
-(ert-deftest jaspace-major-mode-hook-updates-selection ()
+(ert-deftest jaspace-user-hook-enables-mode ()
   (jaspace-test-with-buffer
-    (setq jaspace-modes '(emacs-lisp-mode))
-    (emacs-lisp-mode)
+    (let ((prog-mode-hook (list (lambda () (jaspace-mode 1)))))
+      (emacs-lisp-mode))
     (should jaspace-mode)
     (text-mode)
     (should-not jaspace-mode)))
+
+(ert-deftest jaspace-update-hooks-affect-only-user-enabled-buffer ()
+  (jaspace-test-with-buffer
+    (let ((other (generate-new-buffer " *jaspace-inactive*")))
+      (unwind-protect
+          (progn
+            (jaspace-mode-on)
+            (should (local-variable-p 'post-command-hook))
+            (with-current-buffer other
+              (emacs-lisp-mode)
+              (run-hooks 'post-command-hook)
+              (run-hooks 'font-lock-mode-hook)
+              (should-not jaspace-mode)
+              (should-not buffer-display-table))
+            (jaspace-mode-off)
+            (should-not (memq 'jaspace-update post-command-hook))
+            (should-not (memq 'jaspace--font-lock-changed font-lock-mode-hook)))
+        (kill-buffer other)))))
+
+(ert-deftest jaspace-manual-off-while-suspended-stays-off ()
+  (jaspace-test-with-buffer
+    (setq jaspace-follow-font-lock t font-lock-mode t)
+    (jaspace-mode-on)
+    (setq font-lock-mode nil)
+    (run-hooks 'font-lock-mode-hook)
+    (should-not jaspace-mode)
+    (jaspace-mode-off)
+    (setq font-lock-mode t)
+    (run-hooks 'font-lock-mode-hook)
+    (run-hooks 'post-command-hook)
+    (jaspace-update)
+    (should-not jaspace-mode)))
+
+(ert-deftest jaspace-suspended-major-mode-change-cleans-hooks ()
+  (jaspace-test-with-buffer
+    (setq jaspace-disable-on-read-only-buffers t)
+    (jaspace-mode-on)
+    (read-only-mode 1)
+    (should-not jaspace-mode)
+    (text-mode)
+    (read-only-mode -1)
+    (run-hooks 'post-command-hook)
+    (should-not jaspace-mode)
+    (should-not (memq 'jaspace-update post-command-hook))
+    (should-not (memq 'jaspace--font-lock-changed font-lock-mode-hook))))
 
 (ert-deftest jaspace-font-lock-hook-updates-policy ()
   (jaspace-test-with-buffer

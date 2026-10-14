@@ -27,9 +27,10 @@
 ;; Font Lock faces.  It can also display newline and tab markers.
 ;;
 ;; Add this directory to `load-path', then (require 'jaspace).
-;; Buffers in `jaspace-modes' are enabled automatically, following Font
-;; Lock by default.  Use M-x jaspace-mode, jaspace-mode-on, or
-;; jaspace-mode-off to override the selection for the current buffer.
+;; Use M-x jaspace-mode, jaspace-mode-on, or jaspace-mode-off in the
+;; current buffer.  To enable in programming buffers, add this to init.el:
+;; (add-hook 'prog-mode-hook (lambda () (jaspace-mode 1)))
+;; Loading this library does not enable the mode in any buffer.
 ;;
 ;; Customize `jaspace-alternate-jaspace-string',
 ;; `jaspace-alternate-eol-string', and `jaspace-highlight-tabs' to select
@@ -120,22 +121,10 @@ tab stop.  Changes take effect when the mode is enabled again."
   :type 'hook
   :group 'jaspace)
 
-(defcustom jaspace-modes
-  '(asm-mode awk-mode autoconf-mode c-mode c++-mode cc-mode change-log-mode
-    cperl-mode emacs-lisp-mode java-mode html-mode lisp-mode
-    lisp-interaction-mode m4-mode makefile-mode objc-mode pascal-mode
-    perl-mode sh-mode shell-script-mode sgml-mode xml-mode)
-  "Major modes in which JaSpace is enabled automatically.
-The list uses exact major mode symbols, as in upstream 1.1.
-Manual activation or deactivation overrides it until the major mode
-changes.  Changes to this list are checked after the next command."
-  :type '(repeat (symbol :tag "Major Mode"))
-  :group 'jaspace)
-
 (defvar-local jaspace-mode nil
   "Non-nil when JaSpace is enabled; use the mode commands to change it.")
-(defvar-local jaspace-base-mode nil
-  "Buffer's explicit activation preference, if locally bound.")
+(defvar-local jaspace--requested nil
+  "Non-nil if the user enabled JaSpace, including while it is suspended.")
 (defvar-local jaspace-original-display-table nil
   "Display table present before JaSpace was enabled.")
 (defvar-local jaspace-font-lock-keywords nil
@@ -317,13 +306,9 @@ buffers, without altering calls in other buffers."
                 jaspace-tab-width (and jaspace--tab-marker tab-width)
                 jaspace-font-lock-keywords (jaspace-font-lock-keywords))
           (font-lock-add-keywords nil jaspace-font-lock-keywords 'append)
-          (add-hook 'change-major-mode-hook #'jaspace-mode-quit nil t)
-          (add-hook 'kill-buffer-hook #'jaspace-mode-quit nil t)
           (add-hook 'after-change-functions #'jaspace--after-change nil t)
           (jaspace-fontify-buffer)
           (run-hooks 'jaspace-mode-hook))
-      (remove-hook 'change-major-mode-hook #'jaspace-mode-quit t)
-      (remove-hook 'kill-buffer-hook #'jaspace-mode-quit t)
       (remove-hook 'after-change-functions #'jaspace--after-change t)
       (jaspace--restore-display-table)
       (jaspace--update-width-advice)
@@ -344,6 +329,18 @@ buffers, without altering calls in other buffers."
   "Deactivate JaSpace without changing the buffer's activation preference."
   (when jaspace-mode (jaspace--local-mode -1)))
 
+(defun jaspace--set-buffer-hooks (enable)
+  "Install buffer-local update and cleanup hooks when ENABLE is non-nil.
+Otherwise remove them, including hooks retained during suspension."
+  (dolist (entry '((font-lock-mode-hook . jaspace--font-lock-changed)
+                   (read-only-mode-hook . jaspace-update)
+                   (post-command-hook . jaspace-update)
+                   (change-major-mode-hook . jaspace-mode-off)
+                   (kill-buffer-hook . jaspace-mode-off)))
+    (if enable
+        (add-hook (car entry) (cdr entry) nil t)
+      (remove-hook (car entry) (cdr entry) t))))
+
 ;;;###autoload
 (defun jaspace-mode (&optional arg)
   "Toggle JaSpace in the current buffer.
@@ -357,28 +354,28 @@ preserving the original public interface."
 
 ;;;###autoload
 (defun jaspace-mode-on ()
-  "Enable JaSpace and remember a manual activation preference."
+  "Enable JaSpace in the current buffer."
   (interactive)
-  (setq-local jaspace-base-mode t)
+  (setq jaspace--requested t)
+  (jaspace--set-buffer-hooks t)
   (jaspace-mode-enter))
 
 ;;;###autoload
 (defun jaspace-mode-off ()
-  "Disable JaSpace and remember a manual deactivation preference."
+  "Disable JaSpace in the current buffer, including a suspended mode."
   (interactive)
-  (setq-local jaspace-base-mode nil)
+  (setq jaspace--requested nil)
+  (jaspace--set-buffer-hooks nil)
   (jaspace-mode-quit))
 
 (defun jaspace-update ()
-  "Update the current buffer after mode, Font Lock, or policy changes.
-Automatic decisions use hooks.  Changes made directly with `setq' are
-also checked after the next command in the current buffer."
-  (unless jaspace-inhibit-update
+  "Update a user-enabled buffer after Font Lock or policy changes.
+Buffer-local hooks maintain suspension and tab widths.  Changes made
+directly with `setq' are checked after the next command in that buffer."
+  (when (and (not jaspace-inhibit-update)
+             (or jaspace--requested jaspace-mode))
     (let* ((jaspace-inhibit-update t)
-           (selected (if (local-variable-p 'jaspace-base-mode)
-                         jaspace-base-mode
-                       (memq major-mode jaspace-modes)))
-           (active (and selected
+           (active (and jaspace--requested
                         (or (not jaspace-follow-font-lock) font-lock-mode)
                         (not (and jaspace-disable-on-read-only-buffers
                                   buffer-read-only)))))
@@ -420,21 +417,12 @@ also checked after the next command in the current buffer."
             '(menu-item "Japanese Whitespaces" jaspace-mode
                         :button (:toggle . jaspace-mode)))
 
-(add-hook 'after-change-major-mode-hook #'jaspace-update)
-(add-hook 'font-lock-mode-hook #'jaspace--font-lock-changed)
-(add-hook 'read-only-mode-hook #'jaspace-update)
-(add-hook 'find-file-hook #'jaspace-update)
-(add-hook 'post-command-hook #'jaspace-update)
-
 (defun jaspace-unload-function ()
   "Clean up JaSpace buffers, hooks, and advice."
   (let ((jaspace-inhibit-update t))
     (dolist (buffer (buffer-list))
-      (with-current-buffer buffer (jaspace-mode-quit))))
-  (dolist (hook '(after-change-major-mode-hook read-only-mode-hook
-                 find-file-hook post-command-hook))
-    (remove-hook hook #'jaspace-update))
-  (remove-hook 'font-lock-mode-hook #'jaspace--font-lock-changed)
+      (with-current-buffer buffer
+        (when (or jaspace--requested jaspace-mode) (jaspace-mode-off)))))
   (jaspace--update-width-advice)
   nil)
 
