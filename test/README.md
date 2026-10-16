@@ -77,8 +77,9 @@ Arialと `#` のマーカーでは、行幅が99pxから126pxへ変わっても�
 | --- | --- |
 | [timer](../docs/timer.md) | 導入前後と廃止後の更新経路、旧Emacsのソース、ドラッグ操作のメモに対応するハンドラとコマンドループの比較。 |
 | [mmm-mode](../docs/mmm-mode.md) | 上流のテストと専用連携の挙動、削除の判断。 |
-| [whitespace-mode](../docs/whitespace-mode.md) | table復元・幅API・タブのパディングの干渉、単独使用時の論理幅・ピクセル幅。 |
+| [whitespace-mode](../docs/whitespace-mode.md) | table復元・幅API・タブのパディングの干渉、単独使用時の論理幅・ピクセル幅、既定のU+0020ドット表示による折り返しの変化。 |
 | [U+3000の表示](../docs/ideographic-space-display.md) | カテゴリーによる折り返し、列計算、`fill-region`、同設定のwhitespace-modeとの比較。 |
+| [非置換表示の実現性](../docs/passive-display-feasibility.md) | face・静的合成・自動合成など7方式の比較、タブ・改行・カテゴリー・合成キャッシュの反例と実装規模。 |
 | [追加文字](../docs/international-spaces.md) | 候補6文字の用途、標準設定との関係、双方向表示・字形形成・状態管理・折り返しの試作。 |
 
 ## 過去の検証
