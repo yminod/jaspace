@@ -1,7 +1,7 @@
 ;;; jaspace.el --- Make Japanese whitespaces visible -*- lexical-binding: t; -*-
 
 ;; Author: Satomi I.
-;; Version: 1.2.1
+;; Version: 1.3.0
 ;; Package-Requires: ((emacs "27.1"))
 ;; Keywords: convenience, faces
 ;; URL: https://github.com/yminod/jaspace
@@ -24,7 +24,7 @@
 ;;; Commentary:
 
 ;; JaSpace displays U+3000 IDEOGRAPHIC SPACE using a display table and
-;; Font Lock faces.  It can also display newline and tab markers.
+;; Font Lock faces.  It can also display space, newline, and tab markers.
 ;;
 ;; Add this directory to `load-path', then (require 'jaspace).
 ;; Use M-x jaspace-mode, jaspace-mode-on, or jaspace-mode-off in the
@@ -33,7 +33,8 @@
 ;; Loading this library does not enable the mode in any buffer.
 ;;
 ;; Customize `jaspace-alternate-jaspace-string',
-;; `jaspace-alternate-eol-string', and `jaspace-highlight-tabs' to select
+;; `jaspace-alternate-eol-string', `jaspace-highlight-spaces', and
+;; `jaspace-highlight-tabs' to select
 ;; markers.  Empty alternate strings are treated as nil.  Newline
 ;; markers must end with a newline character.
 ;;
@@ -69,6 +70,25 @@ Changes take effect when the mode is enabled again."
 A character also displays a marker followed by padding to the next
 tab stop.  Changes take effect when the mode is enabled again."
   :type '(choice (const nil) (const t) (character :value ?^))
+  :group 'jaspace)
+
+(defcustom jaspace-highlight-spaces nil
+  "Non-nil highlights U+0020 SPACE with Font Lock.
+A character also displays that marker on each space in the buffer.
+The marker must be a visible character with display width one.
+Pixel width can still differ with proportional or fallback fonts.
+Nil disables both highlighting and markers, preserving the old display.
+Changes take effect when the mode is enabled again."
+  :type '(choice (const nil) (const t) (character :value ?.))
+  :group 'jaspace)
+
+(defface jaspace-highlight-space-face
+  '((((class color) (background light))
+     (:foreground "gray50" :background "gray95"))
+    (((class color) (background dark))
+     (:foreground "gray50" :background "gray20"))
+    (t (:inverse-video t)))
+  "Face for U+0020 SPACE and its marker."
   :group 'jaspace)
 
 (defface jaspace-highlight-jaspace-face
@@ -139,6 +159,7 @@ tab stop.  Changes take effect when the mode is enabled again."
 (defvar-local jaspace--display-was-local nil)
 (defvar-local jaspace--display-entries nil)
 (defvar-local jaspace--tab-marker nil)
+(defvar-local jaspace--space-marker nil)
 
 ;; whitespace-mode keeps a copy of the table it will later restore.
 (defvar whitespace-display-table)
@@ -211,6 +232,52 @@ Return TABLE itself when none of its mappings need changing."
   "Remove only JaSpace's tab overlays between BEG and END."
   (remove-overlays beg end 'jaspace-alt t))
 
+(defun jaspace--clear-space-overlays (beg end)
+  "Remove only JaSpace's U+0020 markers between BEG and END."
+  (remove-overlays beg end 'jaspace-space t))
+
+(defun jaspace--clear-marker-overlays (beg end)
+  "Remove JaSpace's tab and U+0020 markers between BEG and END."
+  (jaspace--clear-tab-overlays beg end)
+  (jaspace--clear-space-overlays beg end))
+
+(defun jaspace--validate-space-marker ()
+  "Validate `jaspace-highlight-spaces' and return its marker, or nil."
+  (let ((marker jaspace-highlight-spaces))
+    (cond
+     ((memq marker '(nil t)) nil)
+     ((and (characterp marker)
+           (not (memq (get-char-code-property marker 'general-category)
+                      '(Cc Cf Zs Zl Zp)))
+           (= (string-width (char-to-string marker)) 1))
+      marker)
+     (t (user-error "jaspace-highlight-spaces needs nil, t, or a visible one-column character")))))
+
+(defun jaspace--prepare-spaces (limit)
+  "Clear old U+0020 markers before Font Lock scans up to LIMIT."
+  (jaspace--clear-space-overlays (point) limit)
+  nil)
+
+(defun jaspace--match-space (limit)
+  "Find a buffer space up to LIMIT and install its marker overlay.
+Leave foreign display, composition, and invisible text alone."
+  (when (re-search-forward " " limit t)
+    (let ((beg (match-beginning 0))
+          (end (match-end 0)))
+      (unless (or (get-char-property beg 'display)
+                  (get-char-property beg 'composition)
+                  (let ((table (or buffer-display-table standard-display-table)))
+                    (and table (aref table ?\s)))
+                  (invisible-p beg))
+        (let ((overlay (make-overlay beg end nil t nil)))
+          (overlay-put overlay 'jaspace-space t)
+          (overlay-put overlay 'evaporate t)
+          ;; A distinct string for each character prevents adjacent
+          ;; display objects from merging into one replacement span.
+          (overlay-put overlay 'display
+                       (char-to-string jaspace--space-marker)))))
+    t))
+
 (defun jaspace--prepare-tabs (limit)
   "Clear old tab markers before Font Lock scans up to LIMIT."
   (jaspace--clear-tab-overlays (point) limit)
@@ -238,6 +305,11 @@ Return TABLE itself when none of its mappings need changing."
    '(("\N{IDEOGRAPHIC SPACE}" (0 'jaspace-highlight-jaspace-face prepend)))
    (when (jaspace--nonempty-string jaspace-alternate-eol-string)
      '(("\n" (0 'jaspace-highlight-eol-face prepend))))
+   (when jaspace-highlight-spaces
+     (if jaspace--space-marker
+         '((jaspace--prepare-spaces)
+           (jaspace--match-space (0 'jaspace-highlight-space-face prepend)))
+       '((" " (0 'jaspace-highlight-space-face prepend)))))
    (when jaspace-highlight-tabs
      (append
       (if jaspace--tab-marker
@@ -284,15 +356,15 @@ buffers, without altering calls in other buffers."
       (advice-remove function #'jaspace--width-advice))))
 
 (defun jaspace--after-change (beg end _old-length)
-  "Discard tab markers on lines affected by a change between BEG and END."
-  (when jaspace--tab-marker
+  "Discard markers on lines affected by a change between BEG and END."
+  (when (or jaspace--tab-marker jaspace--space-marker)
     (save-restriction
       (widen)
       (save-excursion
         (goto-char beg)
         (let ((start (line-beginning-position)))
           (goto-char end)
-          (jaspace--clear-tab-overlays start (line-end-position)))))))
+          (jaspace--clear-marker-overlays start (line-end-position)))))))
 
 ;; An internal define-minor-mode supplies standard mode registration and
 ;; buffer-local state.  Public wrappers preserve the original toggle behavior
@@ -309,6 +381,7 @@ buffers, without altering calls in other buffers."
           (jaspace--update-width-advice)
           (setq jaspace--tab-marker
                 (and (characterp jaspace-highlight-tabs) jaspace-highlight-tabs)
+                jaspace--space-marker (jaspace--validate-space-marker)
                 jaspace-tab-width (and jaspace--tab-marker tab-width)
                 jaspace-font-lock-keywords (jaspace-font-lock-keywords))
           (font-lock-add-keywords nil jaspace-font-lock-keywords 'append)
@@ -320,16 +393,18 @@ buffers, without altering calls in other buffers."
       (jaspace--update-width-advice)
       (save-restriction
         (widen)
-        (jaspace--clear-tab-overlays (point-min) (point-max)))
+        (jaspace--clear-marker-overlays (point-min) (point-max)))
       (jaspace-font-lock-remove-keywords)
       (setq jaspace-font-lock-keywords nil jaspace-tab-width nil
-            jaspace--tab-marker nil)
+            jaspace--tab-marker nil jaspace--space-marker nil)
       (jaspace-fontify-buffer)
       (run-hooks 'jaspace-mode-off-hook))))
 
 (defun jaspace-mode-enter ()
   "Activate JaSpace without changing the buffer's activation preference."
-  (unless jaspace-mode (jaspace--local-mode 1)))
+  (unless jaspace-mode
+    (jaspace--validate-space-marker)
+    (jaspace--local-mode 1)))
 
 (defun jaspace-mode-quit ()
   "Deactivate JaSpace without changing the buffer's activation preference."
@@ -362,6 +437,7 @@ preserving the original public interface."
 (defun jaspace-mode-on ()
   "Enable JaSpace in the current buffer."
   (interactive)
+  (unless jaspace-mode (jaspace--validate-space-marker))
   (setq jaspace--requested t)
   (jaspace--set-buffer-hooks t)
   (jaspace-mode-enter))
@@ -395,11 +471,11 @@ directly with `setq' are checked after the next command in that buffer."
         (jaspace-fontify-buffer)))))
 
 (defun jaspace--font-lock-changed ()
-  "Update activation and discard tab markers when Font Lock stops."
+  "Update activation and discard markers when Font Lock stops."
   (unless font-lock-mode
     (save-restriction
       (widen)
-      (jaspace--clear-tab-overlays (point-min) (point-max))))
+      (jaspace--clear-marker-overlays (point-min) (point-max))))
   (jaspace-update))
 
 (define-key mode-line-mode-menu [jaspace-mode]

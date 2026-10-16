@@ -48,7 +48,7 @@
   (insert-file-contents "jaspace.el")
   (let ((package (package-buffer-info)))
     (unless (and (eq (package-desc-name package) 'jaspace)
-                 (equal (package-desc-version package) '(1 2 1))
+                 (equal (package-desc-version package) '(1 3 0))
                  (equal (package-desc-reqs package) '((emacs (27 1)))))
       (error "Unexpected package metadata: %S" package))))
 
@@ -56,13 +56,16 @@
 (setq jaspace-smoke-idle-timers (copy-sequence timer-idle-list))
 
 (let ((jaspace-follow-font-lock nil)
+      (jaspace-highlight-spaces ?.)
       (jaspace-highlight-tabs ?^))
   (with-temp-buffer
-    (insert "a\N{IDEOGRAPHIC SPACE}\tb\n")
+    (insert "a \N{IDEOGRAPHIC SPACE}\tb\n")
     (jaspace-mode-on)
     (font-lock-ensure)
     (jaspace-smoke-check-idle-timers)
-    (unless (get-char-property 3 'jaspace-alt)
+    (unless (get-char-property 2 'jaspace-space)
+      (error "Space marker not installed"))
+    (unless (get-char-property 4 'jaspace-alt)
       (error "Tab marker not installed"))
     (with-temp-buffer
       (setq-local jaspace-disable-on-read-only-buffers t)
@@ -74,7 +77,9 @@
       (jaspace-smoke-check-idle-timers)
       (jaspace-smoke-check-hooks))
     (when buffer-display-table (error "Display table not restored on unload"))
-    (when (get-char-property 3 'jaspace-alt)
+    (when (get-char-property 2 'jaspace-space)
+      (error "Space overlay left behind on unload"))
+    (when (get-char-property 4 'jaspace-alt)
       (error "Tab overlay left behind on unload"))
     (jaspace-smoke-check-hooks)
     (dolist (function '(char-width string-width))
