@@ -1,6 +1,6 @@
 # mmm-mode専用対応の調査と判断
 
-2026-10-14に調査した。jaspaceの専用mmm-mode対応は削除する。
+2026-10-14に調査し、jaspaceの専用mmm-mode対応は削除した。
 mmm-mode自体の利用者がいない、あるいはその設計が一切動かないことを理由には
 しない。現存する専用処理が不十分で、完全な併用を保守対象にすると表示機能の
 範囲を超えるモード別の検証・対応が必要になるためである。
@@ -82,22 +82,12 @@ HTML内に `emacs-lisp-mode` または `js-mode` の領域を設け、HTML側と
 専用処理はキーワードの追加だけでは現在のバッファローカルな状態や後始末を
 十分に扱えていない。
 
-エラー経路の要点は次のとおりだった。
-
-```text
-jaspace-synch-mmm-maybe
-  mmm-update-mode-info(emacs-lisp-mode, force=t)
-    一時バッファでemacs-lisp-modeを初期化してfont-lockを実行
-      jaspace--match-tab
-        char-to-string(nil)
-```
-
 この調査は二つの組み合わせでのバッチ検証に限定される。全モードとの互換性や
 GUI表示を検証したものではない。
 
 ## 保守方針
 
-`jaspace-mmm-mode-hook`、`jaspace-synch-mmm-maybe` とmmm-modeの宣言を削除する。
+`jaspace-mmm-mode-hook`、`jaspace-synch-mmm-maybe` とmmm-modeの宣言は削除済みである。
 専用の互換stubや代替連携APIは追加しない。既存設定にある
 `(add-hook 'mmm-mode-hook #'jaspace-mmm-mode-hook)` も取り除く必要がある。
 

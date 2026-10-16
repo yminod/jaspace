@@ -48,16 +48,6 @@ Emacs 21.2のWindows向けソースを調べると、**表示先とカレント�
    にある。その後のクリックやキー入力がBで実行されれば、コマンド後の
    jaspaceの更新もBで行われ、有効になる。
 
-```text
-                              current-buffer   選択ウィンドウのbuffer
-drop前                              A                    A
-save-excursion内でfind-file(B)       B                    B
-ハンドラから復帰                    A                    B
-post-command-hook                   A                    B  ← Aだけ更新
-次のループで同期                    B                    B
-次の通常コマンド後                  B                    B  ← Bを更新
-```
-
 この経路では、dropが特別なイベントなのでフックが省略されるわけではない。
 フックの実行先が違うことが問題になる。Emacs 21.3の
 [同じハンドラ](https://github.com/emacs-mirror/emacs/blob/8f1b13b5a300d5fd803661b6bca2f576f88e5247/lisp/term/w32-win.el#L154)
@@ -106,13 +96,10 @@ Emacs側の動作が消えたのでtimerが不要になったのではなく、B
 - 更新の末尾や明示的なon/offでもtimerの遅延を再設定する。
   全バッファで無効にしても、通常のon/offではtimerをキャンセルしない。
 
-インストール済みEmacs 31.1の `timer.el` にある `run-with-idle-timer` の説明と
-実装を確認した。一般的な仕様はEmacsの
-[Idle Timers](https://www.gnu.org/software/emacs/manual/html_node/elisp/Idle-Timers.html)
-にも記載されている。
 繰り返し指定tは、同じ待機中に一定間隔で発火し続ける意味ではなく、
 Emacsが再びidleになるたびに指定秒数の経過後に一度実行する指定である。
-原版について「毎秒すべてのバッファを再着色する」とは解釈しない。
+Emacs 31.1の `timer.el` と
+[Idle Timers](https://www.gnu.org/software/emacs/manual/html_node/elisp/Idle-Timers.html) で確認した。
 
 ## 保守版への変更経緯
 
@@ -171,21 +158,14 @@ Font Lock追従とread-onlyの両方を設定した場合は、両条件が許�
 提供しない。外部処理から変更して直ちに反映したい場合は、対象バッファで
 `jaspace-update` を呼ぶ。
 
-```elisp
-(with-current-buffer target-buffer
-  (setq-local tab-width 8)
-  (jaspace-update))
-```
-
 この呼び出しは状態とoverlayを更新し、必要な再着色を要求する。
 `font-lock-flush` はその場で全バッファを再着色する関数ではなく、実際の
-色付けとタブoverlayの再生成はFont Lockが行う。テストでは
-`font-lock-ensure` でその処理を完了させてから確認する。
+色付けとタブoverlayの再生成はFont Lockが行う。
 表示用文字列やタブマーカーの設定を取り直すには、従来どおり再有効化が必要である。
 
 旧版から同じEmacsセッション内で読み直す際のtimer引き継ぎは扱わない。
 旧版が登録したtimerを現行版が自動回収する保証はないため、移行時はEmacsを
-再起動する。旧timer用の三つの設定・関数への参照も既存設定から取り除く。
+再起動する。廃止した公開設定は [READMEの移行案内](../README.md#原典と旧版からの移行) を参照。
 
 ## 検証結果
 
@@ -197,9 +177,8 @@ GNU Emacs 31.1 (Windows)、初期化ファイルなしで確認した。
 別プロセスで読み込んだ。廃止済みの `make-local-hook` だけを無処理に置き換えた。
 一時的なERT 3件で、timerの共有登録とon/off後の存続、コールバックが現在の
 バッファだけを更新すること、read-onlyの直接変更がコールバックで反映される
-ことを確認した。実際に登録されたtimerを `timer-event-handler` へ渡す検証であり、
-実時間のidle待ちやGUIでの発火を測定したものではない。一時テストと置き換えは
-製品コードに含めない。
+ことを確認した。登録されたtimerを `timer-event-handler` へ渡す検証であり、
+実時間のidle待ちやGUIでの発火を測定したものではない。
 
 ### 導入前後と廃止直後の比較
 
@@ -214,16 +193,13 @@ GNU Emacs 31.1 (Windows)、初期化ファイルなしで確認した。
 | 有効なバッファで `read-only-mode` を切替 | 次のコマンド後のフックで停止・復帰 | timerコールバックで停止・復帰 | read-onlyのフックで停止・復帰 | read-onlyのフックで停止・復帰 |
 
 Font Lockは実際のモード関数で切り替え、全角空白のjaspace faceも確認した。
-現行版の初期化テストだけは、現在の有効化方針に合わせてユーザーフックを設定した。
-旧版二つは保存済みgzipを展開したまま使用した。1.0.0.5が期待する標準display
-tableをテスト側で用意し、全版で同じ条件にした。旧版の `lexical-binding` 不足や
-`cl` 非推奨の警告は残した。
+現行版の初期化テストではユーザーフックを設定した。
+1.0.0.5が期待する標準display tableをテスト側で用意し、全版で同じ条件にした。
 
 ここでの「次のコマンド後」はそのフックを明示実行し、「timerコールバック」は
 登録済みtimerを `timer-event-handler` に渡して確認した。idle待ちの実時間や
 Emacs 21.x本体、OSからのドラッグ操作は試していない。この検証が示すのは、
 追加操作がない場合に更新する経路の差と、現在のフックによる代替が成立する範囲である。
-比較用のソース展開物や一時テスト、取得した上流ソースは追加保存しない。
 
 ### ドラッグ操作のメモに対応する経路の再現
 
@@ -251,30 +227,15 @@ dropでは、単一の選択ウィンドウを宛先に合成イベントを作�
 実際のWindowsシェルからの投入、フレーム間の移動、Emacs 21.xバイナリでの実行、
 実時間のidle発火は検証していない。ソース上の経路の説明と、31.1での
 ハンドラ・コマンドループの再現を、当時の環境全体の再現とは区別する。
-追加調査用のソースとテストも保存しない。
 
 ### 現行版の継続的な検証
 
-現行版には [test/jaspace-tests.el](../test/jaspace-tests.el) に4件を追加した。
-
-- キーボードマクロで実際のコマンドループを通し、タブ幅の直接変更、
-  read-onlyによる停止・復帰、明示的な無効化後の状態維持を確認した。
-- 別バッファからのタブ幅変更は、その場では古い表示を保ち、対象バッファでの
-  `jaspace-update` と再着色後に正しい幅になることを確認した。
-- 別バッファからのread-only変更は、対象バッファのコマンド後に反映される
-  ことを確認した。
-- 実際のFont Lockとread-onlyを組み合わせて3回停止・復帰し、条件が残る間は
-  復帰しないこと、フックの重複実行やタブoverlayの重複がないことを確認した。
-
-既存の編集、major mode変更、バッファ終了、一時停止中の明示的な無効化等の
-テストと合わせ、ERT 47件すべてがソース・バイトコードの両方で成功した。
-警告をエラー扱いにしたコンパイルも成功した。
+この調査時に [test/jaspace-tests.el](../test/jaspace-tests.el) へ4件を追加した。
+実際のコマンドループでの直接変更、別バッファからの変更の反映時点、
+Font Lockとread-onlyを組み合わせた停止・復帰を確認する。
 [test/package-smoke.el](../test/package-smoke.el) では読み込み、有効化、
 一時停止、アンロードの前後で共有idle timerの登録が変化しないことも確認した。
-Eldoc等の初期化によるtimer登録は検証の基準を取る前に済ませている。
+当時の計47件はソース・バイトコードの両方で成功し、コンパイルも成功した。
+現在の件数と再実行方法は [test/README.md](../test/README.md) を参照。
 
-再実行には [test/README.md](../test/README.md) の `scripts/test.ps1` を使う。
-今回の検証範囲では製品実装の修正を必要とする問題は見つからなかった。
-GUI描画、idleとの体感上の差、性能の定量比較、Emacs 27.1〜30系での実行は
-含まない。indirect buffer間の編集に伴うタブ更新の制約も、
-[README](../README.md) に記載したとおり残る。
+GUI描画、idleとの体感上の差、性能の定量比較、他のEmacs版での実行は含まない。
