@@ -385,6 +385,107 @@
     (font-lock-ensure)
     (should (equal (get-char-property 2 'display) "^      "))))
 
+(ert-deftest jaspace-command-loop-refreshes-direct-state-changes ()
+  (jaspace-test-with-buffer
+    (let ((step 0))
+      (setq jaspace-highlight-tabs ?^ tab-width 4
+            jaspace-disable-on-read-only-buffers t)
+      (insert "a\tb\n")
+      (use-local-map (make-sparse-keymap))
+      (local-set-key [f13]
+                     (lambda ()
+                       (interactive)
+                       (setq step (1+ step))
+                       (pcase step
+                         (1 (setq tab-width 8))
+                         (2 (setq buffer-read-only t))
+                         (3 (setq buffer-read-only nil))
+                         (4 (jaspace-mode-off)))))
+      (jaspace-mode-on)
+      (font-lock-ensure)
+      (should (equal (get-char-property 2 'display) "^  "))
+      ;; A keyboard macro enters the command loop and runs post-command-hook.
+      ;; Calling the command function alone would not exercise that path.
+      (save-window-excursion
+        (switch-to-buffer (current-buffer))
+        (execute-kbd-macro [f13])
+        (font-lock-ensure)
+        (should (equal (get-char-property 2 'display) "^      "))
+        (execute-kbd-macro [f13])
+        (should-not jaspace-mode)
+        (should-not (get-char-property 2 'jaspace-alt))
+        (execute-kbd-macro [f13])
+        (should jaspace-mode)
+        (font-lock-ensure)
+        (should (equal (get-char-property 2 'display) "^      "))
+        (execute-kbd-macro [f13])
+        (execute-kbd-macro [f13])
+        (should-not jaspace-mode)))))
+
+(ert-deftest jaspace-background-tab-width-waits-for-target-update ()
+  (jaspace-test-with-buffer
+    (setq jaspace-highlight-tabs ?^ tab-width 4)
+    (insert "a\tb\n")
+    (jaspace-mode-on)
+    (font-lock-ensure)
+    (let ((target (current-buffer)))
+      (with-temp-buffer
+        (with-current-buffer target (setq tab-width 8))
+        (run-hooks 'post-command-hook)
+        (with-current-buffer target
+          ;; Neither changing the variable nor another buffer's command
+          ;; refreshes this buffer's marker.
+          (should (equal (get-char-property 2 'display) "^  "))
+          (jaspace-update)
+          (font-lock-ensure)
+          (should (equal (get-char-property 2 'display) "^      ")))))))
+
+(ert-deftest jaspace-background-policy-waits-for-target-command ()
+  (jaspace-test-with-buffer
+    (setq jaspace-disable-on-read-only-buffers t)
+    (jaspace-mode-on)
+    (let ((target (current-buffer)))
+      (with-temp-buffer
+        (with-current-buffer target (setq buffer-read-only t))
+        (run-hooks 'post-command-hook)
+        (should (buffer-local-value 'jaspace-mode target)))
+      (run-hooks 'post-command-hook)
+      (should-not jaspace-mode)
+      (setq buffer-read-only nil)
+      (run-hooks 'post-command-hook)
+      (should jaspace-mode))))
+
+(ert-deftest jaspace-combined-policies-resume-only-when-both-allow ()
+  (jaspace-test-with-buffer
+    (let ((noninteractive nil)
+          (on 0) (off 0))
+      (rename-buffer (generate-new-buffer-name "jaspace-policy-test"))
+      (emacs-lisp-mode)
+      (setq jaspace-follow-font-lock t
+            jaspace-disable-on-read-only-buffers t
+            jaspace-highlight-tabs ?^)
+      (insert "; a\tb\n")
+      (font-lock-mode 1)
+      (add-hook 'jaspace-mode-hook (lambda () (setq on (1+ on))) nil t)
+      (add-hook 'jaspace-mode-off-hook (lambda () (setq off (1+ off))) nil t)
+      (jaspace-mode-on)
+      (dotimes (_ 3)
+        (font-lock-ensure)
+        (should (= (cl-count-if (lambda (overlay)
+                                 (overlay-get overlay 'jaspace-alt))
+                               (overlays-at 4)) 1))
+        (read-only-mode 1)
+        (font-lock-mode -1)
+        (read-only-mode -1)
+        (run-hooks 'post-command-hook)
+        (should-not jaspace-mode)
+        (should-not (get-char-property 4 'jaspace-alt))
+        (font-lock-mode 1)
+        (should jaspace-mode)
+        (run-hooks 'post-command-hook))
+      (should (= on 4))
+      (should (= off 3)))))
+
 (ert-deftest jaspace-read-only-mode-hook-updates-policy ()
   (jaspace-test-with-buffer
     (setq jaspace-disable-on-read-only-buffers t)

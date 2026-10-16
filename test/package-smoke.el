@@ -1,6 +1,14 @@
 ;;; package-smoke.el --- Package load/unload smoke test -*- lexical-binding: t; -*-
 
 (require 'package)
+(require 'timer)
+
+(defvar jaspace-smoke-idle-timers)
+
+(defun jaspace-smoke-check-idle-timers ()
+  "Check that JaSpace's lifecycle did not add or remove idle timers."
+  (unless (equal jaspace-smoke-idle-timers timer-idle-list)
+    (error "JaSpace lifecycle changed registered idle timers")))
 
 (with-temp-buffer
   (emacs-lisp-mode)
@@ -10,7 +18,11 @@
                            (and (boundp hook) (copy-tree (default-value hook))))
                          hooks))
          (table buffer-display-table))
+    ;; Major-mode setup can start unrelated timers, such as Eldoc's.
+    ;; Take the baseline after that setup and before loading JaSpace.
+    (setq jaspace-smoke-idle-timers (copy-sequence timer-idle-list))
     (require 'jaspace)
+    (jaspace-smoke-check-idle-timers)
     (unless (equal before
                    (mapcar (lambda (hook)
                              (and (boundp hook) (default-value hook)))
@@ -40,12 +52,16 @@
                  (equal (package-desc-reqs package) '((emacs (27 1)))))
       (error "Unexpected package metadata: %S" package))))
 
+;; Metadata inspection above can also initialize Eldoc.
+(setq jaspace-smoke-idle-timers (copy-sequence timer-idle-list))
+
 (let ((jaspace-follow-font-lock nil)
       (jaspace-highlight-tabs ?^))
   (with-temp-buffer
     (insert "a\N{IDEOGRAPHIC SPACE}\tb\n")
     (jaspace-mode-on)
     (font-lock-ensure)
+    (jaspace-smoke-check-idle-timers)
     (unless (get-char-property 3 'jaspace-alt)
       (error "Tab marker not installed"))
     (with-temp-buffer
@@ -53,7 +69,9 @@
       (jaspace-mode-on)
       (read-only-mode 1)
       (when jaspace-mode (error "Read-only buffer did not suspend JaSpace"))
+      (jaspace-smoke-check-idle-timers)
       (unload-feature 'jaspace t)
+      (jaspace-smoke-check-idle-timers)
       (jaspace-smoke-check-hooks))
     (when buffer-display-table (error "Display table not restored on unload"))
     (when (get-char-property 3 'jaspace-alt)

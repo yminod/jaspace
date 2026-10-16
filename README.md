@@ -80,6 +80,8 @@ Font Lockや読み取り専用状態の変更はフックで反映する。こ�
 `tab-width` を直接 `setq` で変更した場合は、そのバッファでの次のコマンド後に
 反映する。即時反映には `jaspace-update` を呼ぶ。
 明示的に無効化したバッファでは、自動的に復帰しない。
+idle timerを廃止した理由、旧版との更新タイミングの違いと検証結果は
+[docs/timer.md](docs/timer.md) に記録した。
 
 無効化・major mode変更・バッファの終了時は、jaspaceの表示設定とタブの
 overlayを後始末する。他の機能が後から変更したマッピングやdisplayプロパティは
@@ -117,14 +119,15 @@ XEmacsおよびEmacs 27.1未満はサポート対象にしない。
 
 ## 検証
 
-GNU Emacs 31.1 (Windows)で、43件のERTがソース・バイトコードの両方で成功している。
+GNU Emacs 31.1 (Windows)で、47件のERTがソース・バイトコードの両方で成功している。
 警告をエラー扱いにしたバイトコンパイル、パッケージのメタデータと
 読み込み・アンロードの検証も通っている。
 
+テスト用の実行スクリプトはPowerShell 7以降（`pwsh`）を前提とする。
 EmacsがPATHにある場合は、リポジトリのルートで次を実行する。
 
 ```powershell
-./scripts/test.ps1
+pwsh -File ./scripts/test.ps1
 ```
 
 PATHにない場合は `-Emacs` に実行ファイルのパスを指定する。自動テストはGUI描画の
