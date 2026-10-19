@@ -91,7 +91,7 @@ EN SPACEなどと違い、`word-wrap-whitespace-mode` を別に有効にしな�
 
 [indent.c](https://github.com/emacs-mirror/emacs/blob/a360712c9d272d950d8d8255ef74570f7e90b7d9/src/indent.c#L281)
 の列計算には、display tableのベクトルを `ASIZE`、すなわち要素数で数える処理がある。
-次はjaspaceを読み込まないEmacsでも `(2 3)` を返した。元の末尾列は4である。
+次はJaSpaceを読み込まないEmacsでも `(2 3)` を返した。元の末尾列は4である。
 
 ```elisp
 (require 'disp-table)
@@ -103,7 +103,7 @@ EN SPACEなどと違い、`word-wrap-whitespace-mode` を別に有効にしな�
 ```
 
 元と同じ字形へ差し替えても、幅APIが示す2桁と、列計算がこの文字に割り当てる1桁が食い違う。
-jaspaceの幅APIのadviceだけが作り出した差ではない。
+JaSpaceの幅APIのadviceだけが作り出した差ではない。
 
 製品でも `"a\u3000b"` の末尾列を調べ、次の結果になった。
 
@@ -119,7 +119,7 @@ U+25A1の幅を2へ変えても、1要素のベクトルの列計算は1のま�
 ## 編集コマンドへの影響
 
 同じ2種類の本文、`text-mode`、`fill-column` 30、禁則処理のカテゴリーを使い、
-jaspaceの有効・無効で `fill-region` の結果を比較した。
+JaSpaceの有効・無効で `fill-region` の結果を比較した。
 マーカー6種類×本文2種類×U+25A1の幅設定2種類の24比較中、12比較で結果が変わった。
 
 - 元のU+3000・`□`・`口` の各1要素の置換では、いずれも改行を挿入する位置が変わった。
@@ -132,7 +132,7 @@ jaspaceの有効・無効で `fill-region` の結果を比較した。
 
 whitespace-modeの既定のマッピングにU+3000は含まれず、既定設定のままでは
 `"a\u3000b"` の論理列も変わらなかった。この点と、U+3000の明示を設定した場合を区別した。
-比較ではwhitespace-modeを単独で使用し、jaspaceとの同時有効化は行っていない。
+比較ではwhitespace-modeを単独で使用し、JaSpaceとの同時有効化は行っていない。
 折り返しを設定する `word-wrap-whitespace-mode` は、表示モードの `whitespace-mode` とは
 別の機能である。
 
@@ -152,7 +152,7 @@ faceのみのwhitespace設定では、`whitespace-style` を `(face spaces)`、
   category・category＋kinsoku・whitespace拡張の各欄と同じだった。
 - 1要素の置換では、whitespace-modeでも末尾列が4から3へ変わった。
   `□` の幅を2にしても同じだった。既定の `□` の幅が1の場合、
-  `char-width` はwhitespaceで1、jaspaceで2を返す違いがあるが、末尾列は両方3だった。
+  `char-width` はwhitespaceで1、JaSpaceで2を返す違いがあるが、末尾列は両方3だった。
 - `fill-region` はマーカー6種類×本文2種類の12比較で、両モードの結果が全て一致した。
   うち6比較では両方とも無効時の結果と異なり、1要素の置換で再現した。
 - 読み取り専用での表示・解除は、本文・変更状態・undoを維持した。
@@ -165,6 +165,19 @@ U+202F・U+3000・U+2800を、段落方向3通りと数字を含むヘブライ�
 [whitespace.elのマッピング登録](https://github.com/emacs-mirror/emacs/blob/a360712c9d272d950d8d8255ef74570f7e90b7d9/lisp/whitespace.el#L2533)
 もdisplay tableへベクトルを直接登録する。調べた実装には、元の文字の幅や
 カテゴリーを維持する補正は見当たらず、今回の比較でもそれらの差を再現した。
+
+## macOSでの追加確認
+
+2026-10-20、macOS 27.0.1（arm64）、GNU Emacs 31.1のGUIでも、
+現行版1.3.0の全角空白の置換でピクセル配置が変わる例を確認した。
+Menlo 18で `a　b　c` の全角空白を `[]` に置換すると、Emacsの座標で
+`b` の横位置は128→132px、`c` は157→165pxとなり、後続行は4px上へ移動した。
+論理列12・15、本文、バッファの未変更状態は維持した。
+
+これはピクセル配置の追加観察であり、上記のカテゴリー・`fill-region`・
+whitespace-modeとの比較条件全体をmacOSで追試した結果ではない。
+別途成功した自動GUIテスト4件と実行条件は
+[検証記録](../test/README.md#macosposix) を参照。
 
 ## 制約の扱い
 

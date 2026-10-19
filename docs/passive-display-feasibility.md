@@ -65,7 +65,7 @@ GUIの内側の枠も試した。両方向を負にした
 単一数値の `:line-width -1` と同一視しない。
 [faceの仕様](https://www.gnu.org/s/emacs/manual/html_node/elisp/Face-Attributes.html)
 にあるように、隣接した枠は一続きになり、各文字を独立した四角で囲む用途には足りない。
-色による強調はwhitespace-modeでも選べるため、これだけではjaspace独自の差別化は弱い。
+色による強調はwhitespace-modeでも選べるため、これだけではJaSpace独自の差別化は弱い。
 
 ## 文字合成の試作
 

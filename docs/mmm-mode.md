@@ -1,6 +1,6 @@
 # mmm-mode専用対応の調査と判断
 
-2026-10-14に調査し、jaspaceの専用mmm-mode対応は削除した。
+2026-10-14に調査し、JaSpaceの専用mmm-mode対応は削除した。
 mmm-mode自体の利用者がいない、あるいはその設計が一切動かないことを理由には
 しない。現存する専用処理が不十分で、完全な併用を保守対象にすると表示機能の
 範囲を超えるモード別の検証・対応が必要になるためである。
@@ -62,9 +62,9 @@ GNU Emacs 31.1 (Windows)で、このコミットの上流ERTを実行した。
 - [#144](https://github.com/dgutov/mmm-mode/issues/144)：Emacs 30.1で
   `c-mode` を埋め込んだ際のredisplayエラー。
 
-## jaspaceの専用処理の実測
+## JaSpaceの専用処理の実測
 
-削除前のjaspaceソースと上記mmm-modeを、初期化ファイルなしのEmacs 31.1で
+削除前のJaSpaceソースと上記mmm-modeを、初期化ファイルなしのEmacs 31.1で
 確認した。テスト用のglobal-font-lock補助処理は前述の修正相当を使用した。
 HTML内に `emacs-lisp-mode` または `js-mode` の領域を設け、HTML側と埋め込み側の
 両方に全角空白とタブを置いた。専用フックの有無と両モードの有効化順を変えた。
@@ -74,10 +74,10 @@ HTML内に `emacs-lisp-mode` または `js-mode` の領域を設け、HTML側と
 | --- | --- |
 | 専用フックなし | 全角空白のdisplay tableによる置換は両領域で有効。faceとタブの代替表示は埋め込み側では付かず、HTML側も有効化順に依存する。 |
 | 専用フックあり・タブの代替文字 `?^` | 両方の埋め込みモード、有効化順の両方で `wrong-type-argument characterp nil` が発生。 |
-| 専用フックあり・タブ強調nil | 埋め込み側にもfaceが付くが、HTML側は有効化順に依存。HTML＋Emacs Lispでは無効化後の再fontify後にも埋め込み側のjaspace faceが残ることを別プロセスでも再現。 |
+| 専用フックあり・タブ強調nil | 埋め込み側にもfaceが付くが、HTML側は有効化順に依存。HTML＋Emacs Lispでは無効化後の再fontify後にも埋め込み側のJaSpace faceが残ることを別プロセスでも再現。 |
 
 タブのエラーでは、専用処理が `mmm-update-mode-info` にモードの再初期化を
-要求し、mmm-modeの一時バッファ内でjaspaceのmatcherが実行された。
+要求し、mmm-modeの一時バッファ内でJaSpaceのmatcherが実行された。
 そのバッファには `jaspace--tab-marker` がなく、`char-to-string` にnilが渡った。
 専用処理はキーワードの追加だけでは現在のバッファローカルな状態や後始末を
 十分に扱えていない。

@@ -2,8 +2,20 @@
 
 ## 実行方法
 
-PowerShell 7以降（`pwsh`）とEmacsを用意し、リポジトリのルートで実行する。
-初期化ファイルは読み込まない。
+Emacsを用意し、リポジトリのルートで実行する。初期化ファイルは読み込まない。
+macOSなどのPOSIX環境では `/bin/sh` 用のスクリプトを使える。
+
+```sh
+./scripts/test.sh
+```
+
+EmacsがPATHにない場合は、最初の引数に実行ファイルのパスを指定する。
+
+```sh
+./scripts/test.sh /Applications/Emacs.app/Contents/MacOS/Emacs
+```
+
+PowerShell 7以降（`pwsh`）を使う場合：
 
 ```powershell
 pwsh -File ./scripts/test.ps1
@@ -33,6 +45,8 @@ PATHにある場合は `-Emacs` を省略できる。GUIはテスト後に終了
 2026-10-16、GNU Emacs 31.1 (Windows)、開発版1.3.0（`ba9d9a6`）で、
 ERT 61件がソース・バイトコードの両方で成功した。
 バイトコンパイルとパッケージ検証も成功した。
+2026-10-20にはmacOSのEmacs 31.1でも同じ検証とGUIの4件が成功した。
+環境固有の実行条件と目視比較の結果は [macOS（POSIX）](#macosposix) を参照。
 
 | 検証対象 | 確認した範囲 |
 | --- | --- |
@@ -64,8 +78,57 @@ Arialと `#` のマーカーでは、行幅が99pxから126pxへ変わっても�
 維持された。Arialがない環境ではこの1件をskipする。
 任意のフォント・faceでのピクセル配置の維持は保証しない。
 
-対応範囲はEmacs 27.1以降だが、確認済みなのはWindows版31.1のみである。
+対応範囲はEmacs 27.1以降だが、確認済みのEmacsバージョンはWindows・macOSとも31.1である。
 他の対応バージョン・OS、実端末、任意のフォント割り当ては未検証である。
+
+### macOS（POSIX）
+
+2026-10-20、macOS 27.0.1（arm64）、GNU Emacs 31.1（build 2、NS版）、
+開発版1.3.0（`33bd281` に `scripts/test.sh` を追加）で確認した。
+ソース・バイトコードのERT各61件、警告をエラー扱いにしたバイトコンパイル、
+パッケージメタデータと読み込み・アンロードの検証がすべて成功した。
+
+通常の実行では、幅APIへのadviceの登録に伴うEmacsのネイティブコンパイルで、
+コンパイラが `-mmacosx-version-min=18.0` を拒否した。
+この環境では次の指定で成功した。ネイティブコンパイルは無効化していない。
+スクリプト自体には環境固有の設定を加えていない。
+
+```sh
+MACOSX_DEPLOYMENT_TARGET=14.0 ./scripts/test.sh
+```
+
+同日、GUIの4件もすべて成功した（skipなし）。既定フォントはMenlo 12。
+Arialと `#` のマーカーでは、ピクセル寸法が `(84 . 14)` から `(120 . 14)` に
+変わる一方、論理列と幅APIは維持された。
+`JASPACE_GUI_TESTS_COMPLETE` とプロセスの終了コード0を確認した。
+
+追加の目視比較は、通常起動したEmacsに本forkのソースを読み込み、Menlo 18で行った。
+同じ本文を通常表示と全マーカー有効の表示で上下に並べ、本文の一致と未変更状態も確認した。
+ASCII行・タブ行で測定した文字座標は一致し、100個の半角空白を含む行でも
+折り返し後の `end` の横位置と論理列は一致した。
+一方、`a　b　c` の全角空白を `[]` に置換した行では、Emacsの座標で
+`b` が横128→132px、`c` が157→165pxとなった（論理列12・15は維持）。
+この行の高さも変わり、後続行の縦位置は4px上がった。
+全角空白の置換でピクセル配置が変わり得る既知の制約は
+[U+3000の表示](../docs/ideographic-space-display.md) を参照。
+この目視比較は、前述の `-Q` による自動GUIテストとは別に実施した。
+
+このセッションのサンドボックス内のシェルからはGUIを起動できなかったため、
+Computer Useで接続したEmacsから、`make-process` で別のEmacsを起動した。
+子プロセスに `MACOSX_DEPLOYMENT_TARGET=14.0` と `JASPACE_GUI_REPORT` を渡し、
+リポジトリを作業ディレクトリとして、次の引数で実行した。
+既存のEmacsの初期化ファイルや読み込み済みパッケージは子プロセスに引き継がない。
+
+```text
+-Q -L . -L test -l jaspace.el -l test/jaspace-gui-tests.el --eval '(jaspace-gui-run-tests)'
+```
+
+これは `scripts/test-gui.ps1` と同じGUIテストの実行引数である。
+同スクリプトの起動経路自体が成功したことを示す結果ではない。
+サンドボックス内のシェルからは、JaSpaceを読み込まない最小GUI起動でも
+AppKit初期化中の `_RegisterApplication` でabortした。
+Computer Useによる画面取得・キーボード操作は成功しており、
+シェル経由の起動制限とGUIテストの成否は区別する。
 
 ## 研究用の一時試験
 

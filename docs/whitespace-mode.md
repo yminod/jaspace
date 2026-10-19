@@ -4,7 +4,7 @@
 `whitespace-mode` を調べた。実行環境はGNU Emacs 31.1 (Windows)である。
 表示対象を分けても支障の出る実装があり、完全な併用は確認できなかった。
 以下の測定値は1.2.1の記録であり、併用の干渉問題は未修正である。
-開発版1.3.0ではU+0020をjaspace単独で明示できるようにした。
+開発版1.3.0ではU+0020をJaSpace単独で明示できるようにした。
 現在の [拡張方針](future-directions.md) は併用を前提とせず、U+3000の現行方式は
 既知の制約を含めて許容する。同設定のwhitespaceにも列計算・折り返しの制約があることは
 [追試](ideographic-space-display.md#whitespace-modeとの同条件比較) で確認した。
@@ -32,11 +32,11 @@ whitespaceの置換表示も、元の幅を維持する保証を持つものと�
 広がるという警告がある。マッピングの選択も表示可能かどうかを調べる処理であり、
 元と同じ幅かどうかの検査ではない。
 
-jaspaceを読み込まず、`tab-width` を4、`whitespace-style` を `'(tab-mark)` とし、
+JaSpaceを読み込まず、`tab-width` を4、`whitespace-style` を `'(tab-mark)` とし、
 既定のマッピングで `"abc\tZ\n"` を確認した。`Z` の位置での `current-column` は、
 有効化前4、有効化後8、無効化後4だった。列のキャッシュは再計算して測定した。
 
-以下のjaspaceの置換消失や古い幅設定の残存は、この単独の幅変化とは別の問題である。
+以下のJaSpaceの置換消失や古い幅設定の残存は、この単独の幅変化とは別の問題である。
 
 ### フォントによるピクセル幅の違い
 
@@ -61,9 +61,9 @@ faceにフォントやサイズ等を指定した別条件までは検証して�
 タブの上記の例もGUIで40pxから72pxへの変化を確認した。これはフォント差とは
 別に、置換によってタブ位置まで変わる例である。
 
-## 1. whitespaceの無効化でjaspaceの置換表示が消える
+## 1. whitespaceの無効化でJaSpaceの置換表示が消える
 
-全角空白はjaspace、ASCII空白はwhitespaceと、表示対象を分けても発生する。
+全角空白はJaSpace、ASCII空白はwhitespaceと、表示対象を分けても発生する。
 
 ```elisp
 (setq-local whitespace-style '(space-mark)
@@ -80,37 +80,37 @@ faceにフォントやサイズ等を指定した別条件までは検証して�
 [whitespace.el](https://github.com/emacs-mirror/emacs/blob/a360712c9d272d950d8d8255ef74570f7e90b7d9/lisp/whitespace.el)
 の `whitespace-display-char-on` は有効化前のtableを保存し、
 `whitespace-display-char-off` はそれをバッファへ戻す。
-jaspaceを後から有効にしても、whitespaceの保存先には反映されないためである。
+JaSpaceを後から有効にしても、whitespaceの保存先には反映されないためである。
 [jaspace.el](../jaspace.el) の `jaspace-update` は有効状態とタブ幅を確認するが、
 置換tableが外部処理で差し替わったことを確認しない。
 
-jaspaceを先に有効にすると単純な切替では回避できるが、whitespaceが有効な間に
-jaspaceをread-only方針で一時停止・復帰させると、その後のwhitespace無効化で
+JaSpaceを先に有効にすると単純な切替では回避できるが、whitespaceが有効な間に
+JaSpaceをread-only方針で一時停止・復帰させると、その後のwhitespace無効化で
 同じ問題を再現した。単なる有効化順序の指定では十分でない。
 
 ## 2. 幅APIがwhitespaceの有効化順と古い状態に依存する
 
 `jaspace--width-advice` は、幅を計算する間、バッファのdisplay table全体を
-`jaspace-original-display-table` に置き換える。jaspaceが担当する全角空白・改行
+`jaspace-original-display-table` に置き換える。JaSpaceが担当する全角空白・改行
 以外のマッピングも、この保存済みtableで評価することになる。
 
 ASCII空白を `[?X ?X]` へ置換するwhitespace設定で確認した。
-全角空白のjaspaceマーカーには、2桁幅の `"[]"` を使用した。
+全角空白のJaSpaceマーカーには、2桁幅の `"[]"` を使用した。
 
 | 操作・状態 | ASCII空白の `char-width` | `string-width` の `"a b"` |
 | --- | ---: | ---: |
 | 両方とも無効 | 1 | 3 |
-| whitespace、jaspaceの順で有効化 | 2 | 4 |
-| jaspace、whitespaceの順で有効化 | 1 | 3 |
+| whitespace、JaSpaceの順で有効化 | 2 | 4 |
+| JaSpace、whitespaceの順で有効化 | 1 | 3 |
 | whitespaceを先に有効化した組で、whitespaceだけ無効化 | 2 | 4 |
 | 両方とも無効化 | 1 | 3 |
 
-同じ表示設定でもAPIの結果が順序で変わる。whitespace無効化後も、jaspaceが
+同じ表示設定でもAPIの結果が順序で変わる。whitespace無効化後も、JaSpaceが
 有効な間は、保存済みtableにあるwhitespaceの古いマッピングを参照し続ける。
 どちらの値を返すべきかという設定方針以前に、順序への依存と無効化後の残存がある。
 
 両モードに全角空白の置換を設定した場合にも注意が必要である。
-whitespaceの1桁の `"W"` を先に設定し、jaspaceの2桁の `"[]"` で上書きすると、
+whitespaceの1桁の `"W"` を先に設定し、JaSpaceの2桁の `"[]"` で上書きすると、
 表示tableは `"[]"` でも `char-width` は保存済みの `"W"` に由来する1を返した。
 後勝ちの表示設定だけでは、幅APIとの整合まで保証されない。
 
@@ -119,14 +119,14 @@ whitespaceの1桁の `"W"` を先に設定し、jaspaceの2桁の `"[]"` で上�
 `jaspace--match-tab` はマーカー文字とASCII空白を連結した文字列を、タブの
 overlayの `display` に設定する。この生成した空白にもdisplay tableが適用される。
 
-`tab-width` を4、jaspaceのタブマーカーを `?^`、whitespaceのASCII空白の
+`tab-width` を4、JaSpaceのタブマーカーを `?^`、whitespaceのASCII空白の
 置換を `[?X ?X]` とし、本文 `"a\tb\n"` を再着色した。
 本文にはASCII空白がないが、生成したパディングがwhitespaceの影響を受ける。
 
 | 条件 | タブoverlayの文字列 | `b` の位置での `current-column` |
 | --- | --- | ---: |
 | 置換なし | なし | 4 |
-| jaspaceのタブマーカーのみ | `"^  "` | 4 |
+| JaSpaceのタブマーカーのみ | `"^  "` | 4 |
 | 上記のwhitespaceの空白置換も有効 | `"^  "` | 6 |
 
 マーカーの後ろの空白2個がそれぞれ2桁で表示されるため、後続文字がずれる。
@@ -137,7 +137,7 @@ overlayの `display` に設定する。この生成した空白にもdisplay tab
 ## 4. 全角空白の表示幅を固定する仕組みはない
 
 これはwhitespaceとの併用以前にある制約である。
-jaspaceは任意の置換文字列をdisplay tableへ設定するが、元の幅への調整をしない。
+JaSpaceは任意の置換文字列をdisplay tableへ設定するが、元の幅への調整をしない。
 単独で全角空白の直後の列を調べると、次の値になった。
 
 | 置換文字列 | 全角空白の `char-width` / `string-width` | 直後の `current-column` |
@@ -156,15 +156,15 @@ jaspaceは任意の置換文字列をdisplay tableへ設定するが、元の幅
 成功した4件の範囲は次のとおりである。
 
 - whitespaceをfaceによる強調だけに限定した組み合わせ。有効化・無効化の
-  順序4通り、各3回のread-onlyによる一時停止・復帰で、jaspaceのマッピングと
+  順序4通り、各3回のread-onlyによる一時停止・復帰で、JaSpaceのマッピングと
   タブの列を維持し、最後にoverlayを除去できた。
 - ASCII空白を1桁の `"."` に置換した場合の、タブ直後の列の維持。
-- タブが残り1桁の位置にある場合、jaspaceの `"^"` のoverlayがwhitespaceの
+- タブが残り1桁の位置にある場合、JaSpaceの `"^"` のoverlayがwhitespaceの
   tab-markより優先され、タブ直後の列を維持すること。
 - read-onlyでの本文・変更状態・undoの保持と、他バッファの幅APIの維持。
   faceだけの場合と1桁のspace-markを加えた場合で、有効化順序も変えた。
 
-現時点で暫定的に勧められるのは、jaspaceで全角空白を置換し、whitespace側は
+現時点で暫定的に勧められるのは、JaSpaceで全角空白を置換し、whitespace側は
 faceによる強調を担当する構成である。例えば次の表示設定とする。
 
 ```elisp
@@ -213,7 +213,7 @@ U+3000の置換が既定にないことは、既定マーカーの影響がな�
 
 影響を分離するため、マッピングは既定のまま `whitespace-style` だけを
 `(space-mark)` とした場合と、styleも全て既定の場合を比較した。
-jaspaceは読み込まず、文字列overlayも使用していない。
+JaSpaceは読み込まず、文字列overlayも使用していない。
 
 ### 論理列と整形
 

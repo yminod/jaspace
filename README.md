@@ -1,6 +1,6 @@
 # jaspace.el
 
-`jaspace.el` は、日本語のいわゆる全角空白（U+3000 IDEOGRAPHIC SPACE）を可視化し、
+JaSpace（`jaspace.el`）は、日本語のいわゆる全角空白（U+3000 IDEOGRAPHIC SPACE）を可視化し、
 設定によりいわゆる半角空白（U+0020 SPACE）・改行・タブも
 表示するEmacsのminor modeである。現行開発版は1.3.0で、GNU Emacs 27.1以降を対象とする。
 
@@ -36,7 +36,7 @@
 Lispからの引数なしの `jaspace-mode` もトグル動作となるので、有効化には
 `(jaspace-mode 1)` を使う。`jaspace-mode-hook` は有効化時だけ、
 `jaspace-mode-off-hook` は無効化時だけ、実際に状態が変わったときに実行する。
-major modeを変更するとjaspaceは無効になる。新しいモードに有効化用のフックを
+major modeを変更するとJaSpaceは無効になる。新しいモードに有効化用のフックを
 設定していれば、そこで再度有効になる。
 
 ## 表示の設定
@@ -73,7 +73,7 @@ faceだけで全角空白を可視化するには、`jaspace-highlight-jaspace-f
 ### 半角空白の明示
 
 半角空白（U+0020）は既定では明示しない。whitespace-modeの `space-mark` に
-似た表示をjaspace単独で使いたい場合は、例えばドットを指定する。
+似た表示をJaSpace単独で使いたい場合は、例えばドットを指定する。
 
 ```elisp
 (setq jaspace-highlight-spaces ?.)
@@ -96,14 +96,14 @@ faceだけで全角空白を可視化するには、`jaspace-highlight-jaspace-f
 マーカーには表示幅1桁の可視文字を使う。例えば `?\N{MIDDLE DOT}` も指定できるが、
 文字幅設定で2桁になる場合は使えない。無効な値では有効化前にエラーを通知する。
 他の機能がdisplay・composition・invisibleを指定した空白や、display tableで
-既に置換している空白には、jaspaceのマーカーを重ねない。
+既に置換している空白には、JaSpaceのマーカーを重ねない。
 
 その他の設定は `M-x customize-group RET jaspace` から変更できる。
 
 ## 状態の更新と併用
 
 `jaspace-follow-font-lock` は既定でtであり、有効化したバッファでは
-Font Lockが無効な間jaspaceを一時停止し、有効になると復帰する。
+Font Lockが無効な間JaSpaceを一時停止し、有効になると復帰する。
 `jaspace-disable-on-read-only-buffers` をtにすると、読み取り専用の間も
 一時停止する。この設定の既定値はnilである。
 
@@ -114,12 +114,12 @@ Font Lockや読み取り専用状態の変更はフックで反映する。こ�
 idle timerを廃止した理由、旧版との更新タイミングの違いと検証結果は
 [docs/timer.md](docs/timer.md) に記録した。
 
-無効化・major mode変更・バッファの終了時は、jaspaceの表示設定を除去する。
+無効化・major mode変更・バッファの終了時は、JaSpaceの表示設定を除去する。
 他の機能が後から変更したマッピングや、複製元・複製先の表示設定は維持する。
 
 `whitespace-mode` と併用する場合、当面はwhitespace側をfaceによる強調に
 限定する。space-mark・tab-mark・newline-markによる置換を併用すると、
-表示対象を分けても、whitespaceの無効化でjaspaceの置換表示が消える場合がある。
+表示対象を分けても、whitespaceの無効化でJaSpaceの置換表示が消える場合がある。
 幅APIやタブのパディングにも影響がある。再現条件と検証範囲は
 [docs/whitespace-mode.md](docs/whitespace-mode.md) に記録した。
 
@@ -168,16 +168,33 @@ XEmacsおよびEmacs 27.1未満はサポート対象にしない。
 
 GNU Emacs 31.1 (Windows)で、61件のERTがソース・バイトコードの両方で成功し、
 バイトコンパイルとパッケージ検証も通っている。別途、GUIの4件も成功した。
+macOS 27.0.1（arm64）のEmacs 31.1でも、下記の環境変数を指定した条件で
+同じ61件・バイトコンパイル・パッケージ検証が成功した。
+別途、初期化ファイルを読まないmacOSのGUIでも4件すべてが成功した。
 
-テスト用の実行スクリプトはPowerShell 7以降（`pwsh`）を前提とする。
 EmacsがPATHにある場合は、リポジトリのルートで次を実行する。
+macOSなどのPOSIX環境では：
+
+```sh
+./scripts/test.sh
+```
+
+今回のmacOS環境では、Emacsのネイティブコンパイル時にコンパイラが
+`-mmacosx-version-min=18.0` を拒否したため、次の指定で実行した。
+
+```sh
+MACOSX_DEPLOYMENT_TARGET=14.0 ./scripts/test.sh
+```
+
+PATHにない場合は、最初の引数に実行ファイルのパスを指定する。
+PowerShell 7以降（`pwsh`）では：
 
 ```powershell
 pwsh -File ./scripts/test.ps1
 ```
 
 PATHにない場合は `-Emacs` に実行ファイルのパスを指定する。
-確認済みのバージョンは31.1のみで、通常の自動テストはGUI描画を含まない。
+確認済みのEmacsバージョンは31.1のみで、通常の自動テストはGUI描画を含まない。
 GUIの実行方法、検証条件と研究用の一時試験は [test/README.md](test/README.md) を参照。
 
 ## 原典と旧版からの移行

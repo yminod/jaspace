@@ -12,7 +12,7 @@ Font Lockに任せることで、パッケージ固有の待機処理を持た�
 
 | 保存版 | 更新経路と当時の記載 |
 | --- | --- |
-| 0.1.0.9（2002-09-23）、1.0.0.3（2003-05-19）、1.0.0.5（2003-06-08） | グローバルな `post-command-hook` に `jaspace-post-command-hook` を追加し、コマンド後に状態を確認する。Windowsでシェルからファイルをドラッグして開くと、クリックやキー入力までjaspaceが有効にならない旨の既知問題を記載している。 |
+| 0.1.0.9（2002-09-23）、1.0.0.3（2003-05-19）、1.0.0.5（2003-06-08） | グローバルな `post-command-hook` に `jaspace-post-command-hook` を追加し、コマンド後に状態を確認する。Windowsでシェルからファイルをドラッグして開くと、クリックやキー入力までJaSpaceが有効にならない旨の既知問題を記載している。 |
 | 1.0.0.7（2004-04-22） | 上記のフックを削除し、共有idle timerへ変更。ドラッグ時の既知問題の記載もなくなった。 |
 | 1.1（2005-02-26） | idle timerを継続し、状態追従に加えてタブマーカーの幅の変化も検出する。 |
 
@@ -42,11 +42,11 @@ Emacs 21.2のWindows向けソースを調べると、**表示先とカレント�
    `save-excursion` はウィンドウに表示するバッファまでAへ戻すものではない。
 3. [keyboard.cのコマンド実行後](https://github.com/emacs-mirror/emacs/blob/244c288bd138a0a433ca83e1654917fa8a1fb2b9/src/keyboard.c#L1644)
    は、そのまま `post-command-hook` を実行する。
-   jaspace 1.0.0.5のフックはAで `jaspace-update` を呼ぶため、Bを有効化しない。
+   JaSpace 1.0.0.5のフックはAで `jaspace-update` を呼ぶため、Bを有効化しない。
 4. カレントバッファを選択中ウィンドウのBへ合わせる処理は、
    [次のループの先頭](https://github.com/emacs-mirror/emacs/blob/244c288bd138a0a433ca83e1654917fa8a1fb2b9/src/keyboard.c#L1366)
    にある。その後のクリックやキー入力がBで実行されれば、コマンド後の
-   jaspaceの更新もBで行われ、有効になる。
+   JaSpaceの更新もBで行われ、有効になる。
 
 この経路では、dropが特別なイベントなのでフックが省略されるわけではない。
 フックの実行先が違うことが問題になる。Emacs 21.3の
@@ -58,11 +58,11 @@ Emacs 21.2のWindows向けソースを調べると、**表示先とカレント�
 [font-lock.el](https://github.com/emacs-mirror/emacs/blob/244c288bd138a0a433ca83e1654917fa8a1fb2b9/lisp/font-lock.el#L1015)
 と [easy-mmode.el](https://github.com/emacs-mirror/emacs/blob/244c288bd138a0a433ca83e1654917fa8a1fb2b9/lisp/emacs-lisp/easy-mmode.el#L269)
 は、ファイル訪問後またはコマンド後に対象バッファのFont Lockを有効化する。
-コマンド後の登録順もFont Lock側が先頭、jaspace側が末尾なので、順序の逆転が
+コマンド後の登録順もFont Lock側が先頭、JaSpace側が末尾なので、順序の逆転が
 常に起きていたとはいえない。後述の動作検証では、BのFont Lockが既に有効でも
-jaspaceだけが無効のままになることを確認した。
+JaSpaceだけが無効のままになることを確認した。
 
-### Emacs 31.1にも残る動作と現行jaspaceの対応
+### Emacs 31.1にも残る動作と現行JaSpaceの対応
 
 Emacs 31.1でも、
 [w32-drag-n-drop](https://github.com/emacs-mirror/emacs/blob/a360712c9d272d950d8d8255ef74570f7e90b7d9/lisp/term/w32-win.el#L133)
@@ -72,10 +72,10 @@ Emacs 31.1でも、
 より先に表示先へ同期する変更もなく、同期は引き続き
 [ループの先頭](https://github.com/emacs-mirror/emacs/blob/a360712c9d272d950d8d8255ef74570f7e90b7d9/src/keyboard.c#L1360)
 で行う。フックを呼ぶ `safe_run_hooks_maybe_narrowed` もカレントバッファを
-表示先へ切り替える関数ではない。timer導入前のjaspaceでは、症状は現在でも残る。
+表示先へ切り替える関数ではない。timer導入前のJaSpaceでは、症状は現在でも残る。
 
 timer方式では、同期後のBをidle時のコールバックで更新できる。
-現行jaspaceでは、ユーザーのmajor modeフックでBの初期化中に有効化し、
+現行JaSpaceでは、ユーザーのmajor modeフックでBの初期化中に有効化し、
 Font Lockの状態はBの `font-lock-mode-hook` で追従する。
 Emacs側の動作が消えたのでtimerが不要になったのではなく、Bで直接処理する
 有効化・更新経路を設けたことで、Aのコマンド後のフックへの依存をなくしている。
@@ -152,7 +152,7 @@ Font Lock追従とread-onlyの両方を設定した場合は、両条件が許�
 ## 反映タイミングと制約
 
 `setq` や `setq-local` で `font-lock-mode`、`buffer-read-only`、`tab-width`、
-追従設定を変更しても、それだけではjaspaceの更新フックは走らない。
+追従設定を変更しても、それだけではJaSpaceの更新フックは走らない。
 そのバッファで次のコマンドが終わるまで状態やタブ幅が残る場合がある。
 別バッファのコマンド後の更新では反映されず、idleの経過を契機とする更新も
 提供しない。外部処理から変更して直ちに反映したい場合は、対象バッファで
@@ -192,7 +192,7 @@ GNU Emacs 31.1 (Windows)、初期化ファイルなしで確認した。
 | 一度更新した後、Font LockをLispから有効化 | 次のコマンド後のフックまで無効 | timerコールバックまで無効 | Font Lockのフックで有効化 | 有効化希望を記録したバッファで、Font Lockのフックにより復帰 |
 | 有効なバッファで `read-only-mode` を切替 | 次のコマンド後のフックで停止・復帰 | timerコールバックで停止・復帰 | read-onlyのフックで停止・復帰 | read-onlyのフックで停止・復帰 |
 
-Font Lockは実際のモード関数で切り替え、全角空白のjaspace faceも確認した。
+Font Lockは実際のモード関数で切り替え、全角空白のJaSpace faceも確認した。
 現行版の初期化テストではユーザーフックを設定した。
 1.0.0.5が期待する標準display tableをテスト側で用意し、全版で同じ条件にした。
 
@@ -205,14 +205,14 @@ Emacs 21.x本体、OSからのドラッグ操作は試していない。この�
 
 ドラッグ操作のメモに関する追加調査では、Emacs 31.1 (Windows)上で
 21.2から取り出した `w32-drag-n-drop` の定義と、31.1添付の実際のハンドラを比較した。
-jaspaceは1.0.0.5、1.0.0.7、現行版の3種類を別プロセスで読み込み、
+JaSpaceは1.0.0.5、1.0.0.7、現行版の3種類を別プロセスで読み込み、
 各組み合わせでdropと通常のファイル訪問の2件、計12件の一時ERTが成功した。
 
 dropでは、単一の選択ウィンドウを宛先に合成イベントを作り、
 `execute-kbd-macro` で実際のコマンドループとハンドラを通した。
 `post-command-hook` の観測結果は次のとおりだった。両ハンドラで同じ結果になった。
 
-| jaspace | カレントバッファ | 表示バッファ | 表示バッファのFont Lock | 表示バッファのjaspace |
+| JaSpace | カレントバッファ | 表示バッファ | 表示バッファのFont Lock | 表示バッファのJaSpace |
 | --- | --- | --- | --- | --- |
 | 1.0.0.5 | 呼び出し元A | ファイルB | 有効 | 無効。続く通常コマンド後に有効になる。 |
 | 1.0.0.7 | 呼び出し元A | ファイルB | 有効 | 無効。Bでtimerコールバックを実行すると有効になる。 |

@@ -70,7 +70,7 @@ Emacs 31.1では `nobreak-char-display` の既定値はtで、NBSPなどを
 
 半角空白のマーカーはwhitespace-modeにもあるが、
 [併用調査](whitespace-mode.md) では、対象文字を分けてもtableの保存・復元や幅計算で
-干渉することを確認した。このためjaspace単独でも半角空白を明示できるようにし、
+干渉することを確認した。このためJaSpace単独でも半角空白を明示できるようにし、
 基本機能をwhitespace-modeとの併用が必須となる構成にはしない。
 whitespaceのfaceだけを使う暫定的な併用範囲は、同調査に記録した。
 
